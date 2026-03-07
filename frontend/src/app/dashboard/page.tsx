@@ -460,10 +460,10 @@ export default function Dashboard() {
             </div>
             {error && <div className="bg-rose-50 text-rose-700 text-sm px-4 py-3 rounded-xl mb-4 border border-rose-100">{error}</div>}
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              {needsProfile && <div><label className={labelCls}>Username</label><input className={inputCls} value={formUsername} onChange={e => setFormUsername(e.target.value)} required placeholder="shreyas" /></div>}
-              <div><label className={labelCls}>Full name</label><input className={inputCls} value={formFullName} onChange={e => setFormFullName(e.target.value)} required placeholder="Shreyas K" /></div>
-              <div><label className={labelCls}>Headline</label><input className={inputCls} value={formHeadline} onChange={e => setFormHeadline(e.target.value)} placeholder="AI Engineer at Arytic" /></div>
-              <div><label className={labelCls}>Location</label><input className={inputCls} value={formLocation} onChange={e => setFormLocation(e.target.value)} placeholder="Renton, WA" /></div>
+              {needsProfile && <div><label className={labelCls}>Username</label><input className={inputCls} value={formUsername} onChange={e => setFormUsername(e.target.value)} required placeholder="johndoe" /></div>}
+              <div><label className={labelCls}>Full name</label><input className={inputCls} value={formFullName} onChange={e => setFormFullName(e.target.value)} required placeholder="John Doe" /></div>
+              <div><label className={labelCls}>Headline</label><input className={inputCls} value={formHeadline} onChange={e => setFormHeadline(e.target.value)} placeholder="Software Engineer at Google" /></div>
+              <div><label className={labelCls}>Location</label><input className={inputCls} value={formLocation} onChange={e => setFormLocation(e.target.value)} placeholder="San Francisco, CA" /></div>
               <button type="submit" className="w-full bg-slate-900 text-white py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 shadow-lg shadow-slate-900/10" disabled={submitting}>
                 {submitting ? "Saving..." : needsProfile ? "Create profile" : "Save changes"}
               </button>

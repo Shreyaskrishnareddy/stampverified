@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -127,17 +128,134 @@ function HeroCard() {
   );
 }
 
-export default function LandingPage() {
-  const handleSignIn = async () => {
-    const supabase = createClient();
+function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; onClose: () => void; defaultMode?: "signin" | "signup" }) {
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">(defaultMode);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => { if (open) { setMode(defaultMode); setError(""); setMessage(""); setEmail(""); setPassword(""); } }, [open, defaultMode]);
+
+  if (!open) return null;
+
+  const supabase = createClient();
+
+  const handleGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(""); setMessage(""); setLoading(true);
+    try {
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        });
+        if (error) throw error;
+        setMessage("Password reset link sent! Check your email.");
+      } else if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        });
+        if (error) throw error;
+        setMessage("Check your email to confirm your account.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        router.push("/dashboard");
+      }
+    } catch (err: any) { setError(err.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 modal-backdrop flex items-center justify-center p-4 z-[60]" onClick={onClose}>
+      <div className="animate-scale-in bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 mb-6">
+          <svg className="w-8 h-8 text-sky-500" viewBox="0 0 24 24" fill="currentColor">
+            <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+          </svg>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">
+              {mode === "forgot" ? "Reset password" : mode === "signup" ? "Create account" : "Welcome back"}
+            </h2>
+            <p className="text-sm text-slate-500">
+              {mode === "forgot" ? "We'll email you a reset link" : mode === "signup" ? "Start your verified profile" : "Sign in to Stamp"}
+            </p>
+          </div>
+        </div>
+
+        {error && <div className="bg-rose-50 text-rose-700 text-sm px-4 py-3 rounded-xl mb-4 border border-rose-100">{error}</div>}
+        {message && <div className="bg-sky-50 text-sky-700 text-sm px-4 py-3 rounded-xl mb-4 border border-sky-100">{message}</div>}
+
+        {mode !== "forgot" && (
+          <>
+            <button onClick={handleGoogle} className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors mb-4 shadow-sm">
+              <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Continue with Google
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-xs font-medium text-slate-400">or</span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+          </>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-slate-300 transition-colors" />
+          </div>
+          {mode !== "forgot" && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} placeholder="Min 6 characters" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-slate-300 transition-colors" />
+            </div>
+          )}
+          <button type="submit" disabled={loading} className="w-full bg-slate-900 text-white py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 shadow-lg shadow-slate-900/10">
+            {loading ? "Please wait..." : mode === "forgot" ? "Send reset link" : mode === "signup" ? "Create account" : "Sign in"}
+          </button>
+        </form>
+
+        <div className="mt-4 text-center space-y-2">
+          {mode === "signin" && (
+            <>
+              <button onClick={() => { setMode("forgot"); setError(""); setMessage(""); }} className="text-sm text-slate-400 hover:text-sky-600 transition-colors">Forgot password?</button>
+              <p className="text-sm text-slate-400">Don&apos;t have an account? <button onClick={() => { setMode("signup"); setError(""); setMessage(""); }} className="font-semibold text-slate-700 hover:text-sky-600 transition-colors">Sign up</button></p>
+            </>
+          )}
+          {mode === "signup" && (
+            <p className="text-sm text-slate-400">Already have an account? <button onClick={() => { setMode("signin"); setError(""); setMessage(""); }} className="font-semibold text-slate-700 hover:text-sky-600 transition-colors">Sign in</button></p>
+          )}
+          {mode === "forgot" && (
+            <button onClick={() => { setMode("signin"); setError(""); setMessage(""); }} className="text-sm font-semibold text-slate-700 hover:text-sky-600 transition-colors">Back to sign in</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function LandingPage() {
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+
+  const openSignIn = () => { setAuthMode("signin"); setAuthOpen(true); };
+  const openSignUp = () => { setAuthMode("signup"); setAuthOpen(true); };
+
   return (
     <div className="min-h-screen bg-white overflow-hidden">
+      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} defaultMode={authMode} />
+
       {/* ─── NAV ─── */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/80">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -148,8 +266,8 @@ export default function LandingPage() {
             <span className="text-lg font-extrabold tracking-tight text-slate-900">Stamp</span>
           </div>
           <div className="flex items-center gap-6">
-            <button onClick={handleSignIn} className="text-[13px] font-semibold text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Sign in</button>
-            <button onClick={handleSignIn} className="text-[13px] font-semibold bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-all shadow-sm">Get started</button>
+            <button onClick={openSignIn} className="text-[13px] font-semibold text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Sign in</button>
+            <button onClick={openSignUp} className="text-[13px] font-semibold bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-all shadow-sm">Get started</button>
           </div>
         </div>
       </nav>
@@ -184,10 +302,7 @@ export default function LandingPage() {
           </p>
 
           <div className="animate-fade-up delay-300 mt-10">
-            <button onClick={handleSignIn} className="group relative inline-flex items-center gap-3 bg-slate-900 text-white pl-5 pr-7 py-4 rounded-2xl text-[15px] font-semibold hover:bg-slate-800 transition-all duration-300 shadow-2xl shadow-slate-900/25 hover:shadow-slate-900/35 hover:-translate-y-0.5">
-              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-              </div>
+            <button onClick={openSignUp} className="group relative inline-flex items-center gap-3 bg-slate-900 text-white pl-7 pr-7 py-4 rounded-2xl text-[15px] font-semibold hover:bg-slate-800 transition-all duration-300 shadow-2xl shadow-slate-900/25 hover:shadow-slate-900/35 hover:-translate-y-0.5">
               Start for free
               <svg className="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
             </button>
@@ -342,7 +457,7 @@ export default function LandingPage() {
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">Ready to prove it?</h2>
             <p className="mt-5 text-lg text-slate-500 font-medium leading-relaxed">Build a verified profile that speaks louder than any resume.</p>
-            <button onClick={handleSignIn} className="mt-10 inline-flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-slate-800 transition-all duration-300 shadow-2xl shadow-slate-900/25 hover:shadow-slate-900/35 hover:-translate-y-0.5">
+            <button onClick={openSignUp} className="mt-10 inline-flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-slate-800 transition-all duration-300 shadow-2xl shadow-slate-900/25 hover:shadow-slate-900/35 hover:-translate-y-0.5">
               Create your verified profile
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
             </button>
