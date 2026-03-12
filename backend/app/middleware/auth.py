@@ -2,12 +2,10 @@ import jwt as pyjwt
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicNumbers, SECP256R1
 from cryptography.hazmat.backends import default_backend
 import base64
-import struct
-import requests
 from functools import lru_cache
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.config import get_settings
+from app.config import get_settings, get_supabase
 
 security = HTTPBearer()
 
@@ -22,6 +20,7 @@ def _base64url_decode(data: str) -> bytes:
 @lru_cache()
 def _get_jwks_key():
     """Fetch and cache the JWKS public key from Supabase."""
+    import requests
     settings = get_settings()
     url = f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
     resp = requests.get(url, timeout=10)
@@ -42,11 +41,8 @@ def _get_jwks_key():
     raise ValueError("No ES256 key found in JWKS")
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> dict:
-    token = credentials.credentials
-
+def _decode_token(token: str) -> dict:
+    """Decode and validate a Supabase JWT token. Returns the payload."""
     try:
         public_key = _get_jwks_key()
         payload = pyjwt.decode(
@@ -64,3 +60,38 @@ async def get_current_user(
     except pyjwt.InvalidTokenError as e:
         print(f"[AUTH] JWT validation error: {e}")
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    """Authenticate a regular user (job seeker). Returns {"id": ..., "email": ...}."""
+    return _decode_token(credentials.credentials)
+
+
+async def get_current_org_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    """Authenticate an org admin. Returns {"id": ..., "email": ..., "org": {...}}.
+
+    Validates the JWT, then checks if the user's email matches any
+    organization's admin_email. If not, returns 403.
+    """
+    user = _decode_token(credentials.credentials)
+
+    supabase = get_supabase()
+    result = (
+        supabase.table("organizations")
+        .select("*")
+        .eq("admin_email", user["email"])
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not registered as an organization admin"
+        )
+
+    user["org"] = result.data[0]
+    return user

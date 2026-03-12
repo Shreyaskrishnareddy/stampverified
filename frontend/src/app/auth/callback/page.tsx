@@ -10,9 +10,6 @@ export default function AuthCallback() {
   useEffect(() => {
     const supabase = createClient();
 
-    // With implicit flow, tokens arrive in the URL hash fragment.
-    // detectSessionInUrl: true means the client will automatically
-    // parse them and establish the session, firing onAuthStateChange.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
@@ -23,7 +20,6 @@ export default function AuthCallback() {
       }
     );
 
-    // Fallback: if session already exists (e.g. page reload), redirect
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         router.push("/dashboard");
@@ -34,8 +30,11 @@ export default function AuthCallback() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
+    <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+        <p className="text-sm text-gray-500">Signing you in...</p>
+      </div>
     </div>
   );
 }

@@ -25,5 +25,5 @@ class ProfileResponse(BaseModel):
     headline: Optional[str] = None
     location: Optional[str] = None
     avatar_url: Optional[str] = None
-    trust_score: float = 0
     created_at: Optional[datetime] = None
+    # trust_score removed — computed as "X of Y verified" on the fly
