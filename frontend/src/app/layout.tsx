@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Stamp — Your career, verified.",
+  title: "Stamp | Your career, verified",
   description: "Every claim on your profile is confirmed by the source. No fake profiles. Just proof.",
   metadataBase: new URL("https://stampverified.com"),
   openGraph: {
-    title: "Stamp — Your career, verified.",
+    title: "Stamp | Your career, verified",
     description: "Every claim on your profile is confirmed by the source. No fake profiles. Just proof.",
     siteName: "Stamp",
     type: "website",

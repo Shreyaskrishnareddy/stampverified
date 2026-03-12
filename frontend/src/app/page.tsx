@@ -74,7 +74,7 @@ function HeroCard() {
                 ) : (
                   <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Pending
+                    Under Review
                   </span>
                 )}
               </div>
@@ -82,13 +82,7 @@ function HeroCard() {
           </div>
 
           <div className="mt-5 pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] text-gray-400 font-mono">stampverified.com/sarah</p>
-              <p className="text-[11px] font-semibold text-blue-600">67% verified</p>
-            </div>
-            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-600 to-blue-500 rounded-full" style={{ width: "67%" }} />
-            </div>
+            <p className="text-[11px] text-gray-400 font-mono">stampverified.com/sarah</p>
           </div>
         </div>
       </div>

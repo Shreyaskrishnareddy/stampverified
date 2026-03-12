@@ -9,6 +9,9 @@
 
 html { scroll-behavior: smooth; }
 
+/* All clickable elements get pointer cursor */
+button, [role="button"], a, select, label[for], input[type="checkbox"], input[type="radio"], summary { cursor: pointer; }
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

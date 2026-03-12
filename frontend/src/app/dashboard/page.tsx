@@ -323,7 +323,6 @@ export default function Dashboard() {
   const totalClaims = employment.length + education.length;
   const verifiedClaims = [...employment, ...education].filter(c => c.status === "verified").length;
   const pendingClaims = [...employment, ...education].filter(c => ["awaiting_verification", "awaiting_org"].includes(c.status as string)).length;
-  const verifiedPercent = totalClaims > 0 ? Math.round((verifiedClaims / totalClaims) * 100) : 0;
 
   const inputCls = "w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400";
   const labelCls = "block text-sm font-semibold text-gray-700 mb-1.5";
@@ -337,19 +336,18 @@ export default function Dashboard() {
         {/* Profile header */}
         {profile && (
           <div className="animate-fade-in bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-10">
-            <div className="h-20 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900" />
-            <div className="px-8 pb-8 pt-4">
-              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
-                <div className="flex items-end gap-4">
+            <div className="px-8 py-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                <div className="flex items-center gap-4">
                   <label className="cursor-pointer group relative">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold ring-4 ring-white shadow-lg overflow-hidden">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold shadow-lg overflow-hidden">
                       {profile.avatar_url || userMeta?.avatar_url ? (
-                        <img src={profile.avatar_url || userMeta?.avatar_url} alt="" className="w-20 h-20 rounded-2xl object-cover" />
+                        <img src={profile.avatar_url || userMeta?.avatar_url} alt="" className="w-16 h-16 rounded-2xl object-cover" />
                       ) : (
                         profile.full_name.charAt(0).toUpperCase()
                       )}
                     </div>
-                    <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ring-4 ring-white">
+                    <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
                     </div>
                     <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
@@ -383,18 +381,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {totalClaims > 0 && (
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-gray-400">Verification progress</p>
-                    <p className="text-xs font-bold text-blue-600">{verifiedPercent}%</p>
-                  </div>
-                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-600 to-blue-500 rounded-full transition-all" style={{ width: `${verifiedPercent}%` }} />
-                  </div>
-                </div>
-              )}
-
               <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-8">
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{totalClaims}</p>
@@ -406,7 +392,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-amber-600">{pendingClaims}</p>
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Pending</p>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">In Progress</p>
                 </div>
                 {profile.username && (
                   <div className="ml-auto flex items-center gap-2">
