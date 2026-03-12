@@ -133,29 +133,62 @@ export default function Dashboard() {
   };
   const dismissToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  const loadData = useCallback(async (accessToken: string) => {
+  const autoCreateProfile = useCallback(async (accessToken: string, meta: Record<string, string> | null, email: string) => {
+    const fullName = (meta?.full_name as string) || (meta?.name as string) || email.split("@")[0];
+    const username = email.split("@")[0].replace(/[^a-z0-9._-]/gi, "").toLowerCase();
+    try {
+      const p = await api.createProfile(accessToken, { username, full_name: fullName });
+      setProfile(p);
+      setNeedsProfile(false);
+      addToast("Profile created automatically!");
+    } catch {
+      // Username might be taken — try with random suffix
+      try {
+        const p = await api.createProfile(accessToken, {
+          username: `${username}${Math.floor(Math.random() * 1000)}`,
+          full_name: fullName,
+        });
+        setProfile(p);
+        setNeedsProfile(false);
+        addToast("Profile created! You can edit your username anytime.");
+      } catch {
+        // Fall back to manual profile creation
+        setNeedsProfile(true);
+        setShowProfileForm(true);
+      }
+    }
+  }, [addToast]);
+
+  const reloadClaims = useCallback(async (accessToken: string) => {
+    try { const p = await api.getMyProfile(accessToken); setProfile(p); } catch { /* empty */ }
+    try { setEmployment(await api.getEmploymentClaims(accessToken)); } catch { /* empty */ }
+    try { setEducation(await api.getEducationClaims(accessToken)); } catch { /* empty */ }
+  }, []);
+
+  const loadData = useCallback(async (accessToken: string, meta: Record<string, string> | null, email: string) => {
     try {
       const p = await api.getMyProfile(accessToken);
       setProfile(p);
       setNeedsProfile(false);
     } catch {
-      setNeedsProfile(true);
-      setShowProfileForm(true);
+      // No profile yet — auto-create from auth metadata
+      await autoCreateProfile(accessToken, meta, email);
     }
     try { setEmployment(await api.getEmploymentClaims(accessToken)); } catch { /* empty */ }
     try { setEducation(await api.getEducationClaims(accessToken)); } catch { /* empty */ }
     setLoading(false);
-  }, []);
+  }, [autoCreateProfile]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { router.push("/"); return; }
       setToken(session.access_token);
-      setUserMeta(session.user?.user_metadata as Record<string, string> || null);
-      if (session.user?.user_metadata?.full_name) {
-        setFormFullName(session.user.user_metadata.full_name as string);
+      const meta = (session.user?.user_metadata as Record<string, string>) || null;
+      setUserMeta(meta);
+      if (meta?.full_name) {
+        setFormFullName(meta.full_name as string);
       }
-      loadData(session.access_token);
+      loadData(session.access_token, meta, session.user?.email || "");
     });
   }, [router, loadData, supabase.auth]);
 
@@ -200,7 +233,7 @@ export default function Dashboard() {
         end_date: empEndDate || undefined,
         is_current: empIsCurrent,
       });
-      setShowEmploymentForm(false); resetEmpForm(); loadData(token);
+      setShowEmploymentForm(false); resetEmpForm(); reloadClaims(token);
       addToast("Employment claim added!");
     } catch (err: unknown) { setError((err as Error).message); addToast((err as Error).message, "error"); }
     setSubmitting(false);
@@ -221,7 +254,7 @@ export default function Dashboard() {
         start_date: eduStartDate || undefined,
         end_date: eduEndDate || undefined,
       });
-      setShowEducationForm(false); resetEduForm(); loadData(token);
+      setShowEducationForm(false); resetEduForm(); reloadClaims(token);
       addToast("Education claim added!");
     } catch (err: unknown) { setError((err as Error).message); addToast((err as Error).message, "error"); }
     setSubmitting(false);
@@ -229,32 +262,32 @@ export default function Dashboard() {
 
   const handleDeleteEmp = async (id: string) => {
     if (!token) return;
-    try { await api.deleteEmploymentClaim(token, id); loadData(token); addToast("Claim removed."); } catch { /* empty */ }
+    try { await api.deleteEmploymentClaim(token, id); reloadClaims(token); addToast("Claim removed."); } catch { /* empty */ }
   };
   const handleDeleteEdu = async (id: string) => {
     if (!token) return;
-    try { await api.deleteEducationClaim(token, id); loadData(token); addToast("Claim removed."); } catch { /* empty */ }
+    try { await api.deleteEducationClaim(token, id); reloadClaims(token); addToast("Claim removed."); } catch { /* empty */ }
   };
 
   const handleAcceptEmpCorrection = async (id: string) => {
     if (!token) return;
-    try { await api.acceptEmploymentCorrection(token, id); loadData(token); addToast("Correction accepted!"); } catch { /* empty */ }
+    try { await api.acceptEmploymentCorrection(token, id); reloadClaims(token); addToast("Correction accepted!"); } catch { /* empty */ }
   };
   const handleDenyEmpCorrection = async (id: string) => {
     if (!token) return;
     const reason = prompt("Why are you denying this correction?");
     if (!reason) return;
-    try { await api.denyEmploymentCorrection(token, id, reason); loadData(token); addToast("Correction denied."); } catch { /* empty */ }
+    try { await api.denyEmploymentCorrection(token, id, reason); reloadClaims(token); addToast("Correction denied."); } catch { /* empty */ }
   };
   const handleAcceptEduCorrection = async (id: string) => {
     if (!token) return;
-    try { await api.acceptEducationCorrection(token, id); loadData(token); addToast("Correction accepted!"); } catch { /* empty */ }
+    try { await api.acceptEducationCorrection(token, id); reloadClaims(token); addToast("Correction accepted!"); } catch { /* empty */ }
   };
   const handleDenyEduCorrection = async (id: string) => {
     if (!token) return;
     const reason = prompt("Why are you denying this correction?");
     if (!reason) return;
-    try { await api.denyEducationCorrection(token, id, reason); loadData(token); addToast("Correction denied."); } catch { /* empty */ }
+    try { await api.denyEducationCorrection(token, id, reason); reloadClaims(token); addToast("Correction denied."); } catch { /* empty */ }
   };
   const handleResendEmp = async (id: string) => {
     if (!token) return;
@@ -304,8 +337,8 @@ export default function Dashboard() {
         {/* Profile header */}
         {profile && (
           <div className="animate-fade-in bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-10">
-            <div className="h-24 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900" />
-            <div className="px-8 pb-8 -mt-10">
+            <div className="h-20 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900" />
+            <div className="px-8 pb-8 pt-4">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
                 <div className="flex items-end gap-4">
                   <label className="cursor-pointer group relative">
@@ -490,8 +523,8 @@ export default function Dashboard() {
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold">{needsProfile ? "Welcome to Stamp" : "Edit profile"}</h2>
-                <p className="text-sm text-gray-500">Set up your verified identity</p>
+                <h2 className="text-xl font-bold">{needsProfile ? "Complete your profile" : "Edit profile"}</h2>
+                <p className="text-sm text-gray-500">{needsProfile ? "Choose a username to get started" : "Update your details"}</p>
               </div>
             </div>
             {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">{error}</div>}
