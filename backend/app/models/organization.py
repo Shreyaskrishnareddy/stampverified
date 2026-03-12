@@ -6,11 +6,11 @@ from datetime import datetime
 class OrganizationCreate(BaseModel):
     """Sent by org admin when registering their company/university."""
     name: str
-    domain: str                          # e.g. "arytic.com", "stanford.edu"
-    org_type: str = "company"            # company | university | other
-    verifier_name: Optional[str] = None  # name of verification contact
-    verifier_email: str                  # email that receives verification requests
-    logo_url: Optional[str] = None       # manual upload or Logo.dev URL
+    domain: str                                   # e.g. "arytic.com", "stanford.edu"
+    org_type: str = "company"                     # company | university | other
+    verifier_name: Optional[str] = None           # name of verification contact
+    verifier_email: Optional[str] = None          # defaults to admin_email if not provided
+    logo_url: Optional[str] = None                # manual upload or Logo.dev URL
 
 
 class OrganizationUpdate(BaseModel):

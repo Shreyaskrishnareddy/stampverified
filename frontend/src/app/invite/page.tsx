@@ -40,7 +40,7 @@ function InviteContent() {
           )}
 
           <Link
-            href="/for-employers"
+            href={`/for-employers/register?company=${encodeURIComponent(companyName)}&domain=${encodeURIComponent(companyDomain)}`}
             className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all shadow-lg"
           >
             Register {companyName}

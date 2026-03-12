@@ -72,3 +72,11 @@ input:focus, select:focus, textarea:focus {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+/* ── Mobile safe area ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .fixed.bottom-6 { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ── Prevent horizontal overflow on mobile ── */
+html, body { overflow-x: hidden; }

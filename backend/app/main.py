@@ -11,6 +11,7 @@ from app.routes import (
     lookup,
     invite,
     settings,
+    cron,
 )
 
 app_settings = get_settings()
@@ -47,6 +48,9 @@ app.include_router(verify.router)
 
 # Lookup routes (Clearbit + HIPO)
 app.include_router(lookup.router)
+
+# Cron routes (claim expiry)
+app.include_router(cron.router)
 
 
 @app.get("/")

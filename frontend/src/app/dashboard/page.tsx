@@ -381,7 +381,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-8">
+              <div className="mt-6 pt-6 border-t border-gray-100 flex flex-wrap items-center gap-6 sm:gap-8">
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{totalClaims}</p>
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Claims</p>
@@ -395,13 +395,13 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">In Progress</p>
                 </div>
                 {profile.username && (
-                  <div className="ml-auto flex items-center gap-2">
-                    <p className="text-sm text-gray-400 font-mono bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                  <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
+                    <p className="text-sm text-gray-400 font-mono bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 truncate">
                       stampverified.com/{profile.username}
                     </p>
                     <button
                       onClick={() => { navigator.clipboard.writeText(`https://stampverified.com/${profile.username}`); addToast("Profile link copied!"); }}
-                      className="p-2 rounded-lg bg-gray-50 border border-gray-100 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all"
+                      className="p-2 rounded-lg bg-gray-50 border border-gray-100 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all flex-shrink-0"
                       title="Copy link"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
@@ -515,7 +515,7 @@ export default function Dashboard() {
             </div>
             {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">{error}</div>}
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              {needsProfile && <div><label className={labelCls}>Username</label><input className={inputCls} value={formUsername} onChange={e => setFormUsername(e.target.value)} required placeholder="johndoe" /></div>}
+              {needsProfile && <div><label className={labelCls}>Username</label><input className={inputCls} value={formUsername} onChange={e => setFormUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))} required placeholder="johndoe" minLength={3} maxLength={30} /><p className="text-xs text-gray-400 mt-1">stampverified.com/{formUsername || "you"} — lowercase, letters, numbers, dots, hyphens</p></div>}
               <div><label className={labelCls}>Full name</label><input className={inputCls} value={formFullName} onChange={e => setFormFullName(e.target.value)} required placeholder="John Doe" /></div>
               <div><label className={labelCls}>Headline</label><input className={inputCls} value={formHeadline} onChange={e => setFormHeadline(e.target.value)} placeholder="Software Engineer at Google" /></div>
               <div><label className={labelCls}>Location</label><input className={inputCls} value={formLocation} onChange={e => setFormLocation(e.target.value)} placeholder="San Francisco, CA" /></div>

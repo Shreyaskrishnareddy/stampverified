@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.middleware.auth import get_current_user, get_current_org_admin
+from app.services.storage import upload_org_logo
 from app.models.organization import (
     OrganizationCreate,
     OrganizationUpdate,
@@ -40,13 +41,16 @@ async def register_organization(
             detail="An organization with this domain is already registered"
         )
 
+    # Default verifier_email to admin's email if not provided
+    verifier_email = (org.verifier_email or user["email"]).strip().lower()
+
     data = {
         "name": org.name.strip(),
         "domain": domain,
         "org_type": org.org_type,
         "admin_email": user["email"],
         "verifier_name": org.verifier_name,
-        "verifier_email": org.verifier_email.strip().lower(),
+        "verifier_email": verifier_email,
         "logo_url": org.logo_url,
     }
 
@@ -153,6 +157,17 @@ async def update_my_organization(
         .execute()
     )
     return result.data[0]
+
+
+@router.post("/mine/logo")
+async def upload_logo(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_org_admin),
+):
+    """Upload organization logo to Supabase Storage."""
+    org = user["org"]
+    logo_url = await upload_org_logo(org["id"], file)
+    return {"logo_url": logo_url}
 
 
 @router.get("/search")

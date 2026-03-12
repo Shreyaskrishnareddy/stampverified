@@ -110,6 +110,21 @@ export const api = {
   updateMyOrganization: (token: string, data: Record<string, unknown>) =>
     request("/api/organizations/mine", { method: "PUT", headers: authHeaders(token), body: JSON.stringify(data) }),
 
+  uploadOrgLogo: async (token: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${API_URL}/api/organizations/mine/logo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: "Upload failed" }));
+      throw new Error(error.detail);
+    }
+    return res.json();
+  },
+
   searchOrganizations: (query: string) =>
     request(`/api/organizations/search?q=${encodeURIComponent(query)}`),
 
@@ -180,6 +195,9 @@ export const api = {
       method: "POST", headers: authHeaders(token),
       body: JSON.stringify({ company_name: companyName, company_domain: companyDomain }),
     }),
+
+  decodeInvite: (code: string) =>
+    request(`/api/invite/decode/${code}`),
 
   // ── Settings ──
   changePassword: (token: string, newPassword: string) =>
