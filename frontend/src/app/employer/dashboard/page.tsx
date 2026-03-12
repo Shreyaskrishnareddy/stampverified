@@ -145,7 +145,7 @@ export default function EmployerDashboard() {
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-4 sm:gap-6 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-amber-600">{claims.length}</p>
+                  <p className="text-2xl font-bold text-blue-600">{claims.length}</p>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Pending</p>
                 </div>
                 <div>

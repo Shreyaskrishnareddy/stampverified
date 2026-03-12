@@ -391,7 +391,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Verified</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-amber-600">{pendingClaims}</p>
+                  <p className="text-2xl font-bold text-blue-600">{pendingClaims}</p>
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">In Progress</p>
                 </div>
                 {profile.username && (
