@@ -9,8 +9,8 @@ const config: Record<string, { label: string; bg: string; text: string; icon: st
   },
   awaiting_verification: {
     label: "Under Review",
-    bg: "bg-amber-50 border-amber-200",
-    text: "text-amber-700",
+    bg: "bg-blue-50 border-blue-200",
+    text: "text-blue-700",
     icon: "M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z",
   },
   awaiting_org: {
