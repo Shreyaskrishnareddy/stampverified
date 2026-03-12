@@ -515,7 +515,7 @@ export default function Dashboard() {
             </div>
             {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">{error}</div>}
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              {needsProfile && <div><label className={labelCls}>Username</label><input className={inputCls} value={formUsername} onChange={e => setFormUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))} required placeholder="johndoe" minLength={3} maxLength={30} /><p className="text-xs text-gray-400 mt-1">stampverified.com/{formUsername || "you"} — lowercase, letters, numbers, dots, hyphens</p></div>}
+              {needsProfile && <div><label className={labelCls}>Username</label><input className={inputCls} value={formUsername} onChange={e => setFormUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))} required placeholder="johndoe" minLength={3} maxLength={30} /><p className="text-xs text-gray-400 mt-1">stampverified.com/{formUsername || "you"} · lowercase, letters, numbers, dots, hyphens</p></div>}
               <div><label className={labelCls}>Full name</label><input className={inputCls} value={formFullName} onChange={e => setFormFullName(e.target.value)} required placeholder="John Doe" /></div>
               <div><label className={labelCls}>Headline</label><input className={inputCls} value={formHeadline} onChange={e => setFormHeadline(e.target.value)} placeholder="Software Engineer at Google" /></div>
               <div><label className={labelCls}>Location</label><input className={inputCls} value={formLocation} onChange={e => setFormLocation(e.target.value)} placeholder="San Francisco, CA" /></div>

@@ -21,7 +21,7 @@ export default function ForEmployersPage() {
             Verify employee claims<br />in seconds.
           </h1>
           <p className="mt-6 text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            When someone claims they work at your company, you get notified. Verify, correct, or dispute — all from your dashboard. Free forever.
+            When someone claims they work at your company, you get notified. Verify, correct, or dispute. All from your dashboard. Free forever.
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
             <Link

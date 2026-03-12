@@ -261,7 +261,7 @@ export default function VerifyPage() {
                 onClick={() => setShowCorrect(true)}
                 className="w-full border border-blue-200 text-blue-700 py-3.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition-colors"
               >
-                Partially correct — I want to make corrections
+                Partially correct. I want to make corrections
               </button>
               <button
                 onClick={() => setShowDispute(true)}
