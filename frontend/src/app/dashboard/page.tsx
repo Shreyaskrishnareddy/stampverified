@@ -138,32 +138,6 @@ export default function Dashboard() {
   };
   const dismissToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  const autoCreateProfile = useCallback(async (accessToken: string, meta: Record<string, string> | null, email: string) => {
-    const fullName = (meta?.full_name as string) || (meta?.name as string) || email.split("@")[0];
-    const username = email.split("@")[0].replace(/[^a-z0-9._-]/gi, "").toLowerCase();
-    try {
-      const p = await api.createProfile(accessToken, { username, full_name: fullName });
-      setProfile(p);
-      setNeedsProfile(false);
-      addToast("Profile created automatically!");
-    } catch {
-      // Username might be taken — try with random suffix
-      try {
-        const p = await api.createProfile(accessToken, {
-          username: `${username}${Math.floor(Math.random() * 1000)}`,
-          full_name: fullName,
-        });
-        setProfile(p);
-        setNeedsProfile(false);
-        addToast("Profile created! You can edit your username anytime.");
-      } catch {
-        // Fall back to manual profile creation
-        setNeedsProfile(true);
-        setShowProfileForm(true);
-      }
-    }
-  }, [addToast]);
-
   const reloadClaims = useCallback(async (accessToken: string) => {
     try { const p = await api.getMyProfile(accessToken); setProfile(p); } catch { /* empty */ }
     try { setEmployment(await api.getEmploymentClaims(accessToken)); } catch { /* empty */ }
@@ -176,13 +150,17 @@ export default function Dashboard() {
       setProfile(p);
       setNeedsProfile(false);
     } catch {
-      // No profile yet — auto-create from auth metadata
-      await autoCreateProfile(accessToken, meta, email);
+      // No profile yet — show manual profile creation form
+      const fullName = (meta?.full_name as string) || (meta?.name as string) || email.split("@")[0];
+      setFormFullName(fullName);
+      setFormUsername(email.split("@")[0].replace(/[^a-z0-9._-]/gi, "").toLowerCase());
+      setNeedsProfile(true);
+      setShowProfileForm(true);
     }
     try { setEmployment(await api.getEmploymentClaims(accessToken)); } catch { /* empty */ }
     try { setEducation(await api.getEducationClaims(accessToken)); } catch { /* empty */ }
     setLoading(false);
-  }, [autoCreateProfile]);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
