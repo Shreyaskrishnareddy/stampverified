@@ -581,6 +581,7 @@ stampverified/
 ├── README.md
 ├── SPEC.md                          # Original product spec
 ├── PRODUCTMAP.md                    # Strategic source of truth
+├── ROADMAP.md                       # Implementation roadmap (3 trust layers → marketplace)
 ├── DEPLOYMENT.md                    # Deployment & config guide
 │
 ├── backend/

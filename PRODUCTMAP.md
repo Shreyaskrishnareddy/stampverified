@@ -14,10 +14,12 @@ Stamp is NOT a verification tool. It's NOT social media. It's **trust infrastruc
 
 **One-liner:** The verified professional identity platform. Employers confirm your claims, a badge appears.
 
-**The vision in three phases:**
-1. **Build the trust layer** — verified profiles + verified orgs (MVP)
-2. **Build the marketplace** — verified candidates meet verified employers (Year 1)
-3. **Build the data business** — B2B verification API + recruiter seats (Year 2+)
+**The vision rests on three trust layers:**
+1. **Candidate verification** — verified profiles with employer-confirmed claims (BUILT)
+2. **Employer & recruiter verification** — verified orgs, verified recruiter accounts, verified postings (NEXT)
+3. **Trusted jobs marketplace** — only verified candidates, only verified recruiters, only verified jobs (AFTER)
+
+See `ROADMAP.md` for the full implementation plan with phases, schema, and milestones.
 
 ---
 
@@ -468,32 +470,35 @@ expired
 
 ## Future Roadmap (Post-MVP)
 
-### Phase 2: Marketplace Foundation (Months 6-12)
-- Employer company pages (verified org profiles)
-- Candidate search for verified employers
-- "Interested in opportunities" toggle for candidates
-- University bulk partnership program
-- Employer dashboard as premium tier ($29/month)
+> Full roadmap with implementation details in `ROADMAP.md`.
 
-### Phase 3: Recruiter Product (Months 12-18)
-- Recruiter seat subscriptions ($49-99/month)
-- Advanced search/filter (by role, location, verification status, company)
-- Candidate messaging (verified employers only)
-- ATS integrations (Greenhouse, Lever, Workday)
+### Phase 2: Employer & Recruiter Verification (v1.1)
+- `org_members` table with roles: admin, recruiter, verifier
+- Recruiter accounts linked to verified orgs
+- "Verified Recruiter at {Company}" badges
+- Organization public profiles (`/org/{domain}`)
 
-### Phase 4: B2B Data Business (Month 18+)
+### Phase 3: Job Posting Model (v1.2)
+- `jobs` table tied to verified orgs + verified recruiters
+- `is_verified_posting` derived from org/recruiter state
+- Job creation/management in employer dashboard
+- Only verified employers can post
+
+### Phase 4: Candidate-Facing Jobs Feed (v1.3)
+- `/jobs` page — only jobs from verified employers
+- Every job card shows verified org + recruiter badges
+- Apply with Stamp Profile (no resume needed)
+- Recruiter receives verified candidate profile
+
+### Phase 5: Candidate Discovery (v1.4)
+- Employer search by verified titles, companies, degrees
+- "Open to work" toggle for candidates
+- Recruiter outreach (first monetization: recruiter seats $49-99/month)
+
+### Phase 6+: Data Business
 - B2B verification API ($0.50-2/query)
-- Real-time employment status API for lenders ($2-5/query)
-- FCRA compliance for operating as CRA
-- Verified salary intelligence product
-
-### Phase 5: Platform (Year 3+)
-- HRIS integrations (Workday, BambooHR, Rippling, Gusto) via Finch
-- "Sign in with Stamp" — identity integrations for other platforms
-- International expansion
-- Mobile app
-- Contractor/freelancer verification
-- Company reviews (verified employees only)
+- Employment status API for lenders ($2-5/query)
+- FCRA compliance, HRIS integrations, "Sign in with Stamp"
 
 ---
 
