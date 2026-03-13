@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
 export default function InviteCodePage() {
   const params = useParams();
+  const router = useRouter();
   const code = params.code as string;
 
   const [companyName, setCompanyName] = useState("");
@@ -15,8 +17,23 @@ export default function InviteCodePage() {
   const [inviterName, setInviterName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [alreadyHasOrg, setAlreadyHasOrg] = useState(false);
 
   useEffect(() => {
+    const supabase = createClient();
+
+    // Check if user is already logged in with an org
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        try {
+          await api.getMyOrganization(data.session.access_token);
+          setAlreadyHasOrg(true);
+        } catch {
+          // No org — fine, they can register
+        }
+      }
+    });
+
     api.decodeInvite(code)
       .then((data) => {
         setCompanyName(data.company);
@@ -88,19 +105,38 @@ export default function InviteCodePage() {
               </div>
             )}
 
-            <Link
-              href={`/for-employers/register?company=${encodeURIComponent(companyName)}&domain=${encodeURIComponent(companyDomain)}`}
-              className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all shadow-lg"
-            >
-              Register {companyName}
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
-            </Link>
+            {alreadyHasOrg ? (
+              <div className="space-y-3">
+                <div className="bg-amber-50 text-amber-800 text-sm px-4 py-3 rounded-xl border border-amber-200">
+                  You&apos;re already registered as an organization on Stamp.
+                </div>
+                <button
+                  onClick={() => router.push("/employer/dashboard")}
+                  className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all shadow-lg"
+                >
+                  Go to Employer Dashboard
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  href={`/for-employers/register?company=${encodeURIComponent(companyName)}&domain=${encodeURIComponent(companyDomain)}`}
+                  className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all shadow-lg"
+                >
+                  Register {companyName}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </Link>
 
-            <p className="text-xs text-gray-400 mt-6">
-              Free for all organizations. Takes 2 minutes to set up.
-            </p>
+                <p className="text-xs text-gray-400 mt-6">
+                  Free for all organizations. Takes 2 minutes to set up.
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

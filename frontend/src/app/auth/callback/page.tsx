@@ -5,10 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { Suspense } from "react";
 
+function safeRedirect(url: string | null): string {
+  if (!url || !url.startsWith("/") || url.startsWith("//")) return "/dashboard";
+  return url;
+}
+
 function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/dashboard";
+  const redirect = safeRedirect(searchParams.get("redirect"));
 
   useEffect(() => {
     const supabase = createClient();

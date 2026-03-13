@@ -15,6 +15,8 @@ export default function EmployerLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showWrongAccount, setShowWrongAccount] = useState(false);
+  const [existingEmail, setExistingEmail] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -24,9 +26,9 @@ export default function EmployerLoginPage() {
           router.push("/employer/dashboard");
           return;
         } catch {
-          // Signed in but no org — redirect to register
-          router.push("/for-employers/register");
-          return;
+          // Signed in but no org — show option to register or switch account
+          setExistingEmail(data.session.user.email || "");
+          setShowWrongAccount(true);
         }
       }
       setCheckingAuth(false);
@@ -73,6 +75,32 @@ export default function EmployerLoginPage() {
             <p className="text-gray-400 text-sm mt-1">Employer sign in</p>
           </div>
           <div className="p-8">
+            {showWrongAccount ? (
+              <div className="space-y-4">
+                <div className="bg-amber-50 text-amber-800 text-sm px-4 py-3 rounded-xl border border-amber-200">
+                  You&apos;re signed in as <strong>{existingEmail}</strong>, but no organization is linked to this account.
+                </div>
+                <div className="space-y-3">
+                  <a
+                    href="/for-employers/register"
+                    className="block w-full bg-[#0A0A0A] text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors text-center"
+                  >
+                    Register an organization
+                  </a>
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      setShowWrongAccount(false);
+                      setExistingEmail("");
+                    }}
+                    className="block w-full bg-gray-100 text-gray-700 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors text-center"
+                  >
+                    Sign out and use a different account
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
             {error && (
               <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">
                 {error}
@@ -135,6 +163,8 @@ export default function EmployerLoginPage() {
                 </button>
               </p>
             </form>
+            </>
+            )}
           </div>
         </div>
       </div>
