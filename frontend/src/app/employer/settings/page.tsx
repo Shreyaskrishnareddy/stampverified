@@ -137,7 +137,7 @@ export default function EmployerSettingsPage() {
               <p className="text-xs text-gray-400 mt-1">Domain cannot be changed after registration.</p>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Verifier email</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Organization email</label>
               <input
                 type="email"
                 value={verifierEmail}
@@ -150,10 +150,10 @@ export default function EmployerSettingsPage() {
               </p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <p className="text-xs font-semibold text-gray-600 mb-1">Verifier responsibilities</p>
+              <p className="text-xs font-semibold text-gray-600 mb-1">Organization email responsibilities</p>
               <p className="text-xs text-gray-500 leading-relaxed">
-                The verifier email receives one-time secure links when employees add claims for your organization.
-                The verifier can confirm, suggest corrections, or dispute each claim. No account or login is needed to verify — the link is the authentication.
+                The organization email receives one-time secure links when employees add claims for your organization.
+                The recipient can confirm, suggest corrections, or dispute each claim. No account or login is needed to verify — the link is the authentication.
               </p>
             </div>
             <div>

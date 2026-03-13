@@ -277,9 +277,9 @@ function LandingContent() {
 
           <div className="mt-20 grid md:grid-cols-3 gap-6">
             {[
-              { n: "01", title: "Claim it", desc: "Add your job title, company, degree, or institution. Select from our database. Takes 30 seconds.", icon: "M12 4.5v15m7.5-7.5h-15" },
-              { n: "02", title: "We verify it", desc: "Your employer or university gets a secure email. They confirm, correct, or dispute — no account or login needed.", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
-              { n: "03", title: "Badge appears", desc: "A verified badge on your profile, confirmed at the source. Share your link anywhere.", icon: "M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" },
+              { n: "1", title: "Claim it", desc: "Add your job title, company, degree, or institution. Select from our database. Takes 30 seconds.", icon: "M12 4.5v15m7.5-7.5h-15" },
+              { n: "2", title: "We verify it", desc: "Your employer or university gets a secure email. They confirm, correct, or dispute — no account or login needed.", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
+              { n: "3", title: "Badge appears", desc: "A verified badge on your profile, confirmed at the source. Share your link anywhere.", icon: "M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" },
             ].map((step) => (
               <Section key={step.n}>
                 <div className="group relative bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full">
@@ -312,14 +312,14 @@ function LandingContent() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-0">
             {[
-              { value: "Rampant", label: "Resume fraud is widespread and hard to detect without source verification" },
+              { value: "78%", label: "of resumes contain misleading claims according to hiring managers" },
               { value: "$100+", label: "Traditional background checks are expensive and slow" },
               { value: "Days", label: "Candidates wait days or weeks for outdated background checks" },
-              { value: "Seconds", label: "Stamp verification takes one click. Free for everyone." },
+              { value: "1 Click", label: "Stamp verification takes one click. Free for everyone." },
             ].map((stat, i) => (
               <Section key={i}>
                 <div className={`p-8 h-full ${i < 3 ? "lg:border-r border-white/[.06]" : ""} text-center lg:text-left`}>
-                  <p className="text-5xl font-extrabold bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent leading-tight">{stat.value}</p>
+                  <p className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent leading-tight">{stat.value}</p>
                   <p className="mt-4 text-sm text-gray-400 leading-relaxed">{stat.label}</p>
                 </div>
               </Section>
@@ -387,7 +387,7 @@ function LandingContent() {
               },
               {
                 q: "What does a verified badge actually mean?",
-                a: "It means the organization confirmed the claim was accurate at the time it was checked. Stamp is point-in-time verification, not ongoing monitoring. Each badge shows when and by whom the verification happened.",
+                a: "It means the organization confirmed the claim was accurate at the time it was checked. Stamp is point-in-time verification, not ongoing monitoring. Each badge shows when the verification happened.",
               },
             ].map((item, i) => (
               <Section key={i}>

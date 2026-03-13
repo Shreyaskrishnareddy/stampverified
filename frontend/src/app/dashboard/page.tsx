@@ -150,10 +150,9 @@ export default function Dashboard() {
       setProfile(p);
       setNeedsProfile(false);
     } catch {
-      // No profile yet — show manual profile creation form
-      const fullName = (meta?.full_name as string) || (meta?.name as string) || email.split("@")[0];
-      setFormFullName(fullName);
-      setFormUsername(email.split("@")[0].replace(/[^a-z0-9._-]/gi, "").toLowerCase());
+      // No profile yet — show manual profile creation form (don't prefill)
+      setFormFullName("");
+      setFormUsername("");
       setNeedsProfile(true);
       setShowProfileForm(true);
     }
@@ -168,9 +167,7 @@ export default function Dashboard() {
       setToken(session.access_token);
       const meta = (session.user?.user_metadata as Record<string, string>) || null;
       setUserMeta(meta);
-      if (meta?.full_name) {
-        setFormFullName(meta.full_name as string);
-      }
+      // Don't prefill name from Google metadata — let user enter everything
       loadData(session.access_token, meta, session.user?.email || "");
     });
   }, [router, loadData, supabase.auth]);

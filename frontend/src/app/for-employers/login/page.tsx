@@ -72,7 +72,7 @@ export default function EmployerLoginPage() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
           <div className="bg-[#0A0A0A] px-8 py-6 text-center">
             <span className="text-white font-bold text-lg">Stamp</span>
-            <p className="text-gray-400 text-sm mt-1">Employer sign in</p>
+            <p className="text-gray-400 text-sm mt-1">Organization sign in</p>
           </div>
           <div className="p-8">
             {showWrongAccount ? (
@@ -109,7 +109,7 @@ export default function EmployerLoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Work email</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Organization email</label>
                 <input
                   type="email"
                   value={email}

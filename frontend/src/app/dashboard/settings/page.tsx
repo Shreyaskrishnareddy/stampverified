@@ -122,13 +122,13 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Type <span className="font-mono text-red-600">delete my account</span> to confirm
+                  Type <span className="font-mono text-red-600">deletemyaccount</span> to confirm
                 </label>
                 <input
                   type="text"
                   value={deleteConfirmText}
                   onChange={e => setDeleteConfirmText(e.target.value)}
-                  placeholder="delete my account"
+                  placeholder="deletemyaccount"
                   className="w-full px-4 py-3 bg-gray-50 border border-red-200 rounded-xl text-sm"
                   autoFocus
                 />
@@ -136,7 +136,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleDeleteAccount}
-                  disabled={loading || deleteConfirmText !== "delete my account"}
+                  disabled={loading || deleteConfirmText !== "deletemyaccount"}
                   className="bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
                 >
                   {loading ? "Deleting..." : "Permanently delete everything"}
