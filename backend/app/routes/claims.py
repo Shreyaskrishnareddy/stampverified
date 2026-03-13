@@ -189,9 +189,21 @@ async def update_employment_claim(
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
+    # Re-link org if domain changed
+    new_domain = update_data.get("company_domain")
+    if new_domain and new_domain != (old_claim.get("company_domain") or ""):
+        new_org = _lookup_org_by_domain(new_domain)
+        if new_org:
+            update_data["organization_id"] = new_org["id"]
+        else:
+            update_data["organization_id"] = None
+
+    # Determine effective org_id after potential re-link
+    effective_org_id = update_data.get("organization_id", old_claim.get("organization_id"))
+
     # If claim was verified or had corrections, reset verification
     if old_claim["status"] in ("verified", "correction_proposed", "disputed"):
-        update_data["status"] = "awaiting_verification" if old_claim.get("organization_id") else "awaiting_org"
+        update_data["status"] = "awaiting_verification" if effective_org_id else "awaiting_org"
         update_data["verified_at"] = None
         update_data["verified_by_org"] = None
         update_data["corrected_title"] = None
@@ -219,8 +231,8 @@ async def update_employment_claim(
     updated_claim = result.data[0]
 
     # If was verified/disputed and org exists, re-send verification email
-    if old_claim["status"] in ("verified", "correction_proposed", "disputed") and old_claim.get("organization_id"):
-        org = supabase.table("organizations").select("*").eq("id", old_claim["organization_id"]).execute()
+    if old_claim["status"] in ("verified", "correction_proposed", "disputed") and effective_org_id:
+        org = supabase.table("organizations").select("*").eq("id", effective_org_id).execute()
         if org.data:
             profile = supabase.table("profiles").select("full_name").eq("id", user["id"]).execute()
             claimer_name = profile.data[0]["full_name"] if profile.data else "Someone"
@@ -544,9 +556,21 @@ async def update_education_claim(
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
+    # Re-link org if domain changed
+    new_domain = update_data.get("institution_domain")
+    if new_domain and new_domain != (old_claim.get("institution_domain") or ""):
+        new_org = _lookup_org_by_domain(new_domain)
+        if new_org:
+            update_data["organization_id"] = new_org["id"]
+        else:
+            update_data["organization_id"] = None
+
+    # Determine effective org_id after potential re-link
+    effective_org_id = update_data.get("organization_id", old_claim.get("organization_id"))
+
     # Reset verification if claim was in a reviewed state
     if old_claim["status"] in ("verified", "correction_proposed", "disputed"):
-        update_data["status"] = "awaiting_verification" if old_claim.get("organization_id") else "awaiting_org"
+        update_data["status"] = "awaiting_verification" if effective_org_id else "awaiting_org"
         update_data["verified_at"] = None
         update_data["verified_by_org"] = None
         update_data["corrected_degree"] = None

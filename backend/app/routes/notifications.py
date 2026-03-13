@@ -65,8 +65,23 @@ async def get_unread_count(user: dict = Depends(get_current_user)):
 
 @router.put("/{notification_id}/read")
 async def mark_as_read(notification_id: str, user: dict = Depends(get_current_user)):
-    """Mark a single notification as read."""
+    """Mark a single notification as read. Scoped to the authenticated user."""
     supabase = get_supabase()
+
+    # Check ownership: notification must belong to this user (by user_id or org_admin_email)
+    notif = (
+        supabase.table("notifications")
+        .select("id,user_id,org_admin_email")
+        .eq("id", notification_id)
+        .execute()
+    )
+    if not notif.data:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    row = notif.data[0]
+    if row.get("user_id") != user["id"] and row.get("org_admin_email") != user["email"]:
+        raise HTTPException(status_code=403, detail="Not your notification")
+
     supabase.table("notifications").update({"is_read": True}).eq("id", notification_id).execute()
     return {"detail": "Marked as read"}
 

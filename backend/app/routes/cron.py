@@ -25,12 +25,14 @@ async def expire_claims(
     """
     settings = get_settings()
 
-    # Simple auth: accept service key or no auth in development
+    # Auth: require a dedicated cron secret (not the Supabase service key)
     if settings.environment == "production":
+        if not settings.cron_secret:
+            raise HTTPException(status_code=500, detail="CRON_SECRET not configured")
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Unauthorized")
         token = authorization.split(" ", 1)[1]
-        if token != settings.supabase_service_key:
+        if token != settings.cron_secret:
             raise HTTPException(status_code=401, detail="Unauthorized")
 
     supabase = get_supabase()
