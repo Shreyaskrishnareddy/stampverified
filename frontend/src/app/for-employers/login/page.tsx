@@ -123,7 +123,7 @@ export default function EmployerLoginPage() {
                     if (!email) { setError("Enter your email first."); return; }
                     setLoading(true); setError("");
                     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-                      redirectTo: `${window.location.origin}/auth/callback`,
+                      redirectTo: `${window.location.origin}/auth/callback?redirect=/employer/settings`,
                     });
                     if (resetError) setError(resetError.message);
                     else setError("Password reset link sent! Check your email.");
