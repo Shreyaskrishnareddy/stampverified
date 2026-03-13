@@ -183,7 +183,7 @@ function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; o
           {mode !== "forgot" && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} placeholder="Min 6 characters" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400" />
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} placeholder="Min 8 characters" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400" />
             </div>
           )}
           <button type="submit" disabled={loading} className="w-full bg-[#0A0A0A] text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50">

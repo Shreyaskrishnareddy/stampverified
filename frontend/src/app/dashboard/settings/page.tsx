@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) { setError("Passwords don't match"); return; }
-    if (newPassword.length < 6) { setError("Password must be at least 6 characters"); return; }
+    if (newPassword.length < 8) { setError("Password must be at least 8 characters"); return; }
     if (!token) return;
     setLoading(true); setError(""); setMessage("");
     try {
@@ -75,7 +75,7 @@ export default function SettingsPage() {
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">New password</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} placeholder="Min 6 characters" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} placeholder="Min 8 characters" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Confirm password</label>

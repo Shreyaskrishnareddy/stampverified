@@ -98,7 +98,7 @@ export default function EmployerLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   placeholder="Your password"
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
                 />

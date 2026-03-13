@@ -41,7 +41,7 @@ function CompanyLogo({ name, domain }: { name: string; domain?: string }) {
   if (domain) {
     return (
       <img
-        src={`https://img.logo.dev/${domain}?token=pk_VAZ6tvAVSHOlMOFxJjH_Kw&size=64`}
+        src={`https://logo.clearbit.com/${domain}`}
         alt=""
         className="w-10 h-10 rounded-xl bg-gray-50 object-contain border border-gray-100"
         onError={(e) => {
