@@ -13,6 +13,7 @@ export default function PublicProfile() {
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     api.getPublicProfile(username)
@@ -102,10 +103,20 @@ export default function PublicProfile() {
               </div>
             </div>
 
-            <div className="mt-6 pt-5 border-t border-gray-100 flex items-center gap-6 text-sm">
+            <div className="mt-6 pt-5 border-t border-gray-100 flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
               <span className="text-gray-400"><strong className="text-gray-900 font-semibold">{totalCount}</strong> claims</span>
-              <span className="text-gray-400"><strong className="text-emerald-600 font-semibold">{verifiedCount}</strong> verified</span>
+              <span className="text-gray-400"><strong className="text-emerald-600 font-semibold">{verifiedCount}</strong> source-verified</span>
+              <button
+                onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                className="sm:ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                {copied ? "Copied!" : "Share profile"}
+              </button>
             </div>
+            {verifiedCount > 0 && (
+              <p className="mt-3 text-xs text-gray-400">Only source-verified claims receive a verified badge. Each verification is confirmed directly by the organization.</p>
+            )}
           </div>
         </div>
 
@@ -136,7 +147,15 @@ export default function PublicProfile() {
         )}
 
         {employment.length === 0 && education.length === 0 && (
-          <p className="text-center text-gray-400 py-16">No claims added yet.</p>
+          <div className="text-center py-16">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+              <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 font-medium mb-1">No verified claims yet</p>
+            <p className="text-sm text-gray-400">This profile is waiting for source verification.</p>
+          </div>
         )}
       </div>
 

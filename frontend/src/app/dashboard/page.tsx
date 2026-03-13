@@ -99,6 +99,11 @@ export default function Dashboard() {
   const [inviteCompany, setInviteCompany] = useState({ name: "", domain: "" });
   const [inviteLink, setInviteLink] = useState("");
 
+  // Denial modal state
+  const [showDenialModal, setShowDenialModal] = useState(false);
+  const [denialReason, setDenialReason] = useState("");
+  const [denialTarget, setDenialTarget] = useState<{ id: string; type: "employment" | "education" } | null>(null);
+
   const [formUsername, setFormUsername] = useState("");
   const [formFullName, setFormFullName] = useState("");
   const [formHeadline, setFormHeadline] = useState("");
@@ -273,21 +278,36 @@ export default function Dashboard() {
     if (!token) return;
     try { await api.acceptEmploymentCorrection(token, id); reloadClaims(token); addToast("Correction accepted!"); } catch { /* empty */ }
   };
-  const handleDenyEmpCorrection = async (id: string) => {
-    if (!token) return;
-    const reason = prompt("Why are you denying this correction?");
-    if (!reason) return;
-    try { await api.denyEmploymentCorrection(token, id, reason); reloadClaims(token); addToast("Correction denied."); } catch { /* empty */ }
+  const handleDenyEmpCorrection = (id: string) => {
+    setDenialTarget({ id, type: "employment" });
+    setDenialReason("");
+    setShowDenialModal(true);
   };
   const handleAcceptEduCorrection = async (id: string) => {
     if (!token) return;
     try { await api.acceptEducationCorrection(token, id); reloadClaims(token); addToast("Correction accepted!"); } catch { /* empty */ }
   };
-  const handleDenyEduCorrection = async (id: string) => {
-    if (!token) return;
-    const reason = prompt("Why are you denying this correction?");
-    if (!reason) return;
-    try { await api.denyEducationCorrection(token, id, reason); reloadClaims(token); addToast("Correction denied."); } catch { /* empty */ }
+  const handleDenyEduCorrection = (id: string) => {
+    setDenialTarget({ id, type: "education" });
+    setDenialReason("");
+    setShowDenialModal(true);
+  };
+  const handleSubmitDenial = async () => {
+    if (!token || !denialTarget || !denialReason.trim()) return;
+    setSubmitting(true);
+    try {
+      if (denialTarget.type === "employment") {
+        await api.denyEmploymentCorrection(token, denialTarget.id, denialReason);
+      } else {
+        await api.denyEducationCorrection(token, denialTarget.id, denialReason);
+      }
+      reloadClaims(token);
+      addToast("Correction denied.");
+    } catch { /* empty */ }
+    setSubmitting(false);
+    setShowDenialModal(false);
+    setDenialTarget(null);
+    setDenialReason("");
   };
   const handleResendEmp = async (id: string) => {
     if (!token) return;
@@ -408,6 +428,43 @@ export default function Dashboard() {
                     </button>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* First-run welcome for new users */}
+        {totalClaims === 0 && profile && (
+          <div className="animate-fade-in bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-100 p-8 mb-10">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Welcome to Stamp</h2>
+            <p className="text-sm text-gray-500 mb-6">Build your verified profile in three steps.</p>
+            <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">1. Profile created</p>
+                  <p className="text-xs text-gray-500">Your public profile is live at stampverified.com/{profile.username}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-blue-700">2</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Add your first claim</p>
+                  <p className="text-xs text-gray-500">Add a job or degree below. We&apos;ll route it to the source for verification.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-gray-400">3</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-400">Get verified</p>
+                  <p className="text-xs text-gray-400">Once the organization confirms, a verified badge appears on your profile.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -571,11 +628,13 @@ export default function Dashboard() {
                 <input type="checkbox" checked={empIsCurrent} onChange={e => { setEmpIsCurrent(e.target.checked); if (e.target.checked) setEmpEndDate(""); }} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                 I currently work here
               </label>
-              <p className="text-xs text-gray-400">
-                {empCompanyDomain
-                  ? "We'll notify the company to verify this claim."
-                  : "If the company isn't on Stamp yet, you can invite them after adding this claim."}
-              </p>
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <p className="text-xs text-gray-500">
+                  {empCompanyDomain
+                    ? "Once submitted, a verification email is sent to a role-based address at this company (e.g. hr@). They can confirm, correct, or dispute — no login required."
+                    : "This company isn't on Stamp yet. Your claim will be saved and you can invite them to join. Once they register, verification is sent automatically."}
+                </p>
+              </div>
               <button type="submit" className="w-full bg-[#0A0A0A] text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50" disabled={submitting}>
                 {submitting ? "Adding..." : "Add claim"}
               </button>
@@ -705,6 +764,46 @@ export default function Dashboard() {
               </div>
             )}
             <button onClick={() => setShowInviteModal(false)} className="w-full text-gray-500 py-2.5 text-sm font-medium hover:text-gray-700 mt-2">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Denial reason modal */}
+      {showDenialModal && (
+        <div className="fixed inset-0 bg-black/40 modal-backdrop flex items-center justify-center p-4 z-50">
+          <div className="animate-scale-in bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Deny correction</h2>
+                <p className="text-sm text-gray-500">Explain why you disagree with the proposed changes</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Your claim will be sent back to the verifier with your reason. They may re-review or dispute the claim entirely.
+            </p>
+            <textarea
+              value={denialReason}
+              onChange={(e) => setDenialReason(e.target.value)}
+              placeholder="e.g., The corrected title doesn't match my actual role..."
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm resize-none h-28 placeholder:text-gray-400 mb-4"
+              autoFocus
+            />
+            <button
+              onClick={handleSubmitDenial}
+              disabled={submitting || !denialReason.trim()}
+              className="w-full bg-[#0A0A0A] text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              {submitting ? "Submitting..." : "Submit denial"}
+            </button>
+            <button
+              onClick={() => { setShowDenialModal(false); setDenialTarget(null); setDenialReason(""); }}
+              className="w-full text-gray-500 py-2.5 text-sm font-medium hover:text-gray-700 mt-1"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}

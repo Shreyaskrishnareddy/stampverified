@@ -5,7 +5,7 @@ type EmploymentClaim = {
   id: string; company_name: string; company_domain?: string; title: string;
   department?: string; employment_type: string; start_date: string;
   end_date?: string; is_current: boolean; status: string;
-  verified_by_org?: string; corrected_title?: string;
+  verified_by_org?: string; verified_at?: string; corrected_title?: string;
   corrected_start_date?: string; corrected_end_date?: string;
   correction_reason?: string;
 };
@@ -14,7 +14,7 @@ type EducationClaim = {
   id: string; institution: string; institution_domain?: string;
   degree: string; field_of_study?: string;
   start_date?: string; end_date?: string; status: string;
-  verified_by_org?: string; corrected_degree?: string;
+  verified_by_org?: string; verified_at?: string; corrected_degree?: string;
   corrected_field?: string; corrected_start_date?: string;
   corrected_end_date?: string; correction_reason?: string;
 };
@@ -93,8 +93,10 @@ export function EmploymentCard({
               <span className="w-1 h-1 rounded-full bg-gray-300" />
               <span>{formatType(claim.employment_type)}</span>
             </div>
-            {v && claim.verified_by_org && (
-              <p className="mt-2 text-xs text-emerald-600">Verified by {claim.verified_by_org}</p>
+            {v && claim.verified_at && (
+              <p className="mt-2 text-xs text-emerald-600">
+                Verified on {new Date(claim.verified_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
             )}
           </div>
         </div>
@@ -177,8 +179,10 @@ export function EducationCard({
               {claim.field_of_study && dateRange && <span className="w-1 h-1 rounded-full bg-gray-300" />}
               {dateRange && <span>{dateRange}</span>}
             </div>
-            {v && claim.verified_by_org && (
-              <p className="mt-2 text-xs text-emerald-600">Verified by {claim.verified_by_org}</p>
+            {v && claim.verified_at && (
+              <p className="mt-2 text-xs text-emerald-600">
+                Verified on {new Date(claim.verified_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
             )}
           </div>
         </div>

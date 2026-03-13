@@ -94,15 +94,8 @@ export default function UniversityAutocomplete({ value, domain, onChange, placeh
               </div>
             </button>
           ))}
-          {!loading && query.length >= 2 && (
-            <div className="border-t border-gray-100 px-4 py-2.5">
-              <button
-                onClick={() => { onChange(query, ""); setIsOpen(false); }}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Use &quot;{query}&quot; as entered
-              </button>
-            </div>
+          {!loading && query.length >= 2 && results.length === 0 && (
+            <div className="px-4 py-2.5 text-sm text-gray-400">No matching universities found</div>
           )}
         </div>
       )}

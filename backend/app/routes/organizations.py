@@ -233,6 +233,7 @@ async def update_my_organization(
 
     if "verifier_email" in update_data:
         update_data["verifier_email"] = update_data["verifier_email"].strip().lower()
+        _validate_role_based_email(update_data["verifier_email"], org["domain"])
 
     result = (
         supabase.table("organizations")

@@ -140,7 +140,7 @@ class CorrectAndVerifyAction(BaseModel):
     corrected_start_date: Optional[date] = None
     corrected_end_date: Optional[date] = None
     # Reason for correction
-    reason: Optional[str] = None
+    correction_reason: Optional[str] = None
 
 
 class DisputeAction(BaseModel):

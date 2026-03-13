@@ -249,7 +249,10 @@ function LandingContent() {
           <p className="animate-fade-up delay-200 mt-7 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed font-medium">
             Add your job or degree. We send one email to the source.
             <br className="hidden sm:block" />
-            They confirm it. A verified badge appears forever.
+            They confirm it. A verified badge appears on your profile.
+          </p>
+          <p className="animate-fade-up delay-250 mt-3 text-sm text-gray-400">
+            Each verification confirms what was true at the time it was checked.
           </p>
 
           <div className="animate-fade-up delay-300 mt-10">
@@ -275,8 +278,8 @@ function LandingContent() {
           <div className="mt-20 grid md:grid-cols-3 gap-6">
             {[
               { n: "01", title: "Claim it", desc: "Add your job title, company, degree, or institution. Select from our database. Takes 30 seconds.", icon: "M12 4.5v15m7.5-7.5h-15" },
-              { n: "02", title: "We verify it", desc: "Your employer or university gets a notification. They log in and confirm, correct, or dispute.", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
-              { n: "03", title: "Badge appears", desc: "A permanent verified badge on your profile. Share your link anywhere. It's yours.", icon: "M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" },
+              { n: "02", title: "We verify it", desc: "Your employer or university gets a secure email. They confirm, correct, or dispute — no account or login needed.", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
+              { n: "03", title: "Badge appears", desc: "A verified badge on your profile, confirmed at the source. Share your link anywhere.", icon: "M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" },
             ].map((step) => (
               <Section key={step.n}>
                 <div className="group relative bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full">
@@ -309,16 +312,15 @@ function LandingContent() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-0">
             {[
-              { value: "78%", label: "of resumes contain misleading statements", src: "HireRight Report" },
-              { value: "$100+", label: "average cost per background check", src: "Industry average" },
-              { value: "3-5 days", label: "typical turnaround time", src: "SHRM Data" },
-              { value: "2 clicks", label: "to verify on Stamp. Free.", src: "Our promise" },
+              { value: "Rampant", label: "Resume fraud is widespread and hard to detect without source verification" },
+              { value: "$100+", label: "Traditional background checks are expensive and slow" },
+              { value: "Days", label: "Candidates wait days or weeks for outdated background checks" },
+              { value: "Seconds", label: "Stamp verification takes one click. Free for everyone." },
             ].map((stat, i) => (
               <Section key={i}>
                 <div className={`p-8 h-full ${i < 3 ? "lg:border-r border-white/[.06]" : ""} text-center lg:text-left`}>
                   <p className="text-5xl font-extrabold bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent leading-tight">{stat.value}</p>
                   <p className="mt-4 text-sm text-gray-400 leading-relaxed">{stat.label}</p>
-                  <p className="mt-3 text-[11px] text-gray-600 font-medium uppercase tracking-wider">{stat.src}</p>
                 </div>
               </Section>
             ))}
@@ -351,6 +353,53 @@ function LandingContent() {
                   <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
                   <p className="text-[15px] text-gray-500 leading-relaxed">{item.desc}</p>
                 </div>
+              </Section>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FAQ ─── */}
+      <section className="py-32 px-6 relative">
+        <div className="max-w-3xl mx-auto">
+          <Section>
+            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4 text-center">Common questions</p>
+            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight text-center mb-16">How Stamp works</h2>
+          </Section>
+
+          <div className="space-y-4">
+            {[
+              {
+                q: "Who verifies my claims?",
+                a: "The organization itself. We send a secure, one-time verification link to a role-based email at the company or university (like hr@company.com or registrar@school.edu). The person receiving that link can confirm, correct, or dispute your claim.",
+              },
+              {
+                q: "Can I choose who verifies?",
+                a: "No. Stamp routes verification to the organization's registered verifier email. This prevents anyone from choosing a friendly contact to rubber-stamp a false claim. The verifier must hold a role-based email at the company's domain.",
+              },
+              {
+                q: "What if my company isn't on Stamp yet?",
+                a: "You can still add your claim. It will show as \"Not on Stamp\" until the company registers. You can also send the company an invite link to join. Once they register, all pending claims from that company are automatically sent for verification.",
+              },
+              {
+                q: "Does the verifier need to create an account?",
+                a: "No. Verification is done through a secure one-time link — no login, no account, no password. The link itself is the authentication. This makes it as easy as possible for busy HR teams to respond.",
+              },
+              {
+                q: "What does a verified badge actually mean?",
+                a: "It means the organization confirmed the claim was accurate at the time it was checked. Stamp is point-in-time verification, not ongoing monitoring. Each badge shows when and by whom the verification happened.",
+              },
+            ].map((item, i) => (
+              <Section key={i}>
+                <details className="group bg-white rounded-2xl border border-gray-200 hover:border-gray-300 transition-colors">
+                  <summary className="flex items-center justify-between cursor-pointer px-7 py-5 text-[15px] font-semibold text-gray-900 select-none list-none">
+                    {item.q}
+                    <svg className="w-5 h-5 text-gray-400 group-open:rotate-45 transition-transform duration-200 shrink-0 ml-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                  </summary>
+                  <div className="px-7 pb-5 text-[15px] text-gray-500 leading-relaxed -mt-1">
+                    {item.a}
+                  </div>
+                </details>
               </Section>
             ))}
           </div>

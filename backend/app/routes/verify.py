@@ -137,7 +137,7 @@ async def correct_claim_by_token(
     update_data = {
         "status": "correction_proposed",
         "corrected_by": org["verifier_email"],
-        "correction_reason": correction.reason,
+        "correction_reason": correction.correction_reason,
     }
 
     if claim_type == "employment":

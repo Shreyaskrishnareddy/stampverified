@@ -18,6 +18,7 @@ function RegisterContent() {
   const [orgName, setOrgName] = useState(searchParams.get("company") || "");
   const [orgDomain, setOrgDomain] = useState(searchParams.get("domain") || "");
   const [orgType, setOrgType] = useState("company");
+  const [verifierEmail, setVerifierEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -98,6 +99,7 @@ function RegisterContent() {
         name: orgName,
         domain: orgDomain,
         org_type: orgType,
+        verifier_email: verifierEmail || undefined,
       });
       router.push("/employer/dashboard");
     } catch (err: unknown) {
@@ -209,6 +211,36 @@ function RegisterContent() {
                     <option value="other">Other</option>
                   </select>
                 </div>
+
+                <hr className="border-gray-100" />
+                <p className="text-xs text-gray-500 font-medium">Verification email</p>
+                <p className="text-xs text-gray-400 -mt-2">
+                  This is the email where verification requests are sent. It must be a role-based address at your domain to prevent personal emails from being used for verification.
+                </p>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Verifier email</label>
+                  <input
+                    type="email"
+                    value={verifierEmail}
+                    onChange={(e) => setVerifierEmail(e.target.value)}
+                    required
+                    placeholder="hr@acme.com"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Accepted: hr@, people@, careers@, recruiting@, talent@, registrar@, admissions@, team@
+                  </p>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-blue-800 mb-1">What happens after registration?</p>
+                  <ul className="text-xs text-blue-700 space-y-1">
+                    <li>Any existing claims naming your company are automatically sent for verification.</li>
+                    <li>New claims from employees are routed to your verifier email.</li>
+                    <li>You can verify, correct, or dispute each claim from your dashboard.</li>
+                  </ul>
+                </div>
+
                 <button
                   type="submit"
                   disabled={loading}

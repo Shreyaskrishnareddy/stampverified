@@ -121,22 +121,22 @@ async def get_public_profile(username: str):
 
     user_id = profile.data[0]["id"]
 
-    # Fetch employment claims — exclude disputed (hidden from profile)
+    # Fetch employment claims — only show verified claims on public profile
     employment = (
         supabase.table("employment_claims")
         .select("id,company_name,company_domain,title,department,employment_type,start_date,end_date,is_current,status,verified_at,verified_by_org,corrected_title,corrected_start_date,corrected_end_date,organization_id")
         .eq("user_id", user_id)
-        .neq("status", "disputed")
+        .eq("status", "verified")
         .order("start_date", desc=True)
         .execute()
     )
 
-    # Fetch education claims — exclude disputed
+    # Fetch education claims — only verified
     education = (
         supabase.table("education_claims")
         .select("id,institution,institution_domain,degree,field_of_study,start_date,end_date,status,verified_at,verified_by_org,corrected_degree,corrected_field,corrected_start_date,corrected_end_date,organization_id")
         .eq("user_id", user_id)
-        .neq("status", "disputed")
+        .eq("status", "verified")
         .order("end_date", desc=True)
         .execute()
     )

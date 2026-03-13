@@ -102,10 +102,15 @@ export default function VerifyPage() {
             {result === "verified"
               ? "Thank you for confirming this claim. A verified badge now appears on their profile."
               : result === "corrected"
-                ? "Your corrections have been sent to the user for review."
-                : "Thank you for your response. The claim has been flagged and the user has been notified."}
+                ? "Your corrections have been sent to the user for review. If they accept, the claim will be updated and verified."
+                : "Thank you for your response. The claim has been flagged and the user has been notified. They may edit and resubmit."}
           </p>
-          <div className="mt-8 pt-6 border-t border-gray-100">
+          <div className="mt-6 bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <p className="text-xs text-gray-500 text-center">
+              Your response has been securely recorded. No account was created and no personal data was stored.
+            </p>
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-100">
             <p className="text-xs text-gray-400">Powered by <a href="/" className="font-semibold text-gray-600">stampverified.com</a></p>
           </div>
         </div>
@@ -127,9 +132,17 @@ export default function VerifyPage() {
         </div>
 
         <div className="p-8">
+          <div className="mb-3 flex items-center gap-2 text-xs text-gray-400">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+            Secure one-time verification link
+          </div>
+
           <div className="mb-8">
-            <p className="text-sm text-gray-500 mb-4">
-              <strong className="text-gray-900">{claim.claimer_name as string}</strong> claims the following:
+            <p className="text-sm text-gray-500 mb-1">
+              <strong className="text-gray-900">{claim.claimer_name as string}</strong> claims the following {isEmployment ? "employment" : "education"} at <strong className="text-gray-900">{claim.org_name as string}</strong>:
+            </p>
+            <p className="text-xs text-gray-400 mb-4">
+              You are receiving this because you are a designated verifier for this organization. No account or login is required.
             </p>
 
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
@@ -176,28 +189,37 @@ export default function VerifyPage() {
 
           {!showDispute && !showCorrect ? (
             <div className="space-y-3">
-              <button
-                onClick={handleVerify}
-                disabled={submitting}
-                className="w-full bg-emerald-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-all disabled:opacity-50 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {submitting ? "Verifying..." : "Yes, this is accurate"}
-              </button>
-              <button
-                onClick={() => setShowCorrect(true)}
-                className="w-full border border-blue-200 text-blue-700 py-3.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition-colors"
-              >
-                Partially correct. I want to make corrections
-              </button>
-              <button
-                onClick={() => setShowDispute(true)}
-                className="w-full border border-gray-200 text-gray-600 py-3.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-              >
-                No, this is inaccurate
-              </button>
+              <div>
+                <button
+                  onClick={handleVerify}
+                  disabled={submitting}
+                  className="w-full bg-emerald-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-all disabled:opacity-50 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {submitting ? "Verifying..." : "Yes, this is accurate"}
+                </button>
+                <p className="text-xs text-gray-400 mt-1.5 text-center">A verified badge will appear on their public profile.</p>
+              </div>
+              <div>
+                <button
+                  onClick={() => setShowCorrect(true)}
+                  className="w-full border border-blue-200 text-blue-700 py-3.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition-colors"
+                >
+                  Partially correct — I want to suggest changes
+                </button>
+                <p className="text-xs text-gray-400 mt-1.5 text-center">Your corrections will be sent to the user for review before verification.</p>
+              </div>
+              <div>
+                <button
+                  onClick={() => setShowDispute(true)}
+                  className="w-full border border-gray-200 text-gray-600 py-3.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  No, this is inaccurate
+                </button>
+                <p className="text-xs text-gray-400 mt-1.5 text-center">The claim will be hidden from their profile and they will be notified.</p>
+              </div>
             </div>
           ) : showCorrect ? (
             <div className="space-y-4">
@@ -238,10 +260,21 @@ export default function VerifyPage() {
                 </>
               )}
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Reason for correction</label>
-                <textarea className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm resize-none h-20" placeholder="Explain the corrections..." value={corrections.correction_reason || ""} onChange={e => setCorrections(prev => ({ ...prev, correction_reason: e.target.value }))} />
+                <label className="block text-sm text-gray-600 mb-1">
+                  Reason for correction <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-sm resize-none h-20 ${corrections.correction_reason?.trim() ? "border-gray-200" : "border-amber-300"}`}
+                  placeholder="Explain what needs to be corrected and why..."
+                  value={corrections.correction_reason || ""}
+                  onChange={e => setCorrections(prev => ({ ...prev, correction_reason: e.target.value }))}
+                  required
+                />
+                {!corrections.correction_reason?.trim() && (
+                  <p className="text-xs text-amber-600 mt-1">A reason is required so the user understands the changes.</p>
+                )}
               </div>
-              <button onClick={handleCorrect} disabled={submitting} className="w-full bg-blue-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
+              <button onClick={handleCorrect} disabled={submitting || !corrections.correction_reason?.trim()} className="w-full bg-blue-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
                 {submitting ? "Submitting..." : "Submit corrections"}
               </button>
               <button onClick={() => { setShowCorrect(false); setCorrections({}); }} className="w-full text-gray-500 py-2.5 text-sm font-medium hover:text-gray-700">Cancel</button>

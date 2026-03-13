@@ -17,7 +17,6 @@ export default function EmployerSettingsPage() {
 
   // Form state
   const [orgName, setOrgName] = useState("");
-  const [verifierName, setVerifierName] = useState("");
   const [verifierEmail, setVerifierEmail] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
 
@@ -40,7 +39,6 @@ export default function EmployerSettingsPage() {
         const orgData = await api.getMyOrganization(data.session.access_token);
         setOrg(orgData);
         setOrgName(orgData.name || "");
-        setVerifierName(orgData.verifier_name || "");
         setVerifierEmail(orgData.verifier_email || "");
         setLogoUrl(orgData.logo_url || "");
       } catch {
@@ -59,7 +57,6 @@ export default function EmployerSettingsPage() {
       if (!data.session) return;
       const updated = await api.updateMyOrganization(data.session.access_token, {
         name: orgName,
-        verifier_name: verifierName || undefined,
         verifier_email: verifierEmail || undefined,
         logo_url: logoUrl || undefined,
       });
@@ -140,17 +137,6 @@ export default function EmployerSettingsPage() {
               <p className="text-xs text-gray-400 mt-1">Domain cannot be changed after registration.</p>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Verifier name</label>
-              <input
-                type="text"
-                value={verifierName}
-                onChange={(e) => setVerifierName(e.target.value)}
-                placeholder="HR Department"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-              />
-              <p className="text-xs text-gray-400 mt-1">Name shown when verifying claims.</p>
-            </div>
-            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Verifier email</label>
               <input
                 type="email"
@@ -159,7 +145,16 @@ export default function EmployerSettingsPage() {
                 placeholder="hr@company.com"
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
               />
-              <p className="text-xs text-gray-400 mt-1">Email where verification requests are sent.</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Must be a role-based address at your domain: hr@, people@, careers@, recruiting@, talent@, registrar@, admissions@, team@
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <p className="text-xs font-semibold text-gray-600 mb-1">Verifier responsibilities</p>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                The verifier email receives one-time secure links when employees add claims for your organization.
+                The verifier can confirm, suggest corrections, or dispute each claim. No account or login is needed to verify — the link is the authentication.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Logo URL</label>

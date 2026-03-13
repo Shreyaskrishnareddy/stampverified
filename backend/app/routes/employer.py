@@ -89,13 +89,13 @@ async def get_verified_employees(user: dict = Depends(get_current_org_admin)):
     employees = []
     for claim in (employment.data or []):
         profile = supabase.table("profiles").select("full_name").eq("id", claim["user_id"]).execute()
-        claim["person_name"] = profile.data[0]["full_name"] if profile.data else "Unknown"
+        claim["claimer_name"] = profile.data[0]["full_name"] if profile.data else "Unknown"
         claim["claim_type"] = "employment"
         employees.append(claim)
 
     for claim in (education.data or []):
         profile = supabase.table("profiles").select("full_name").eq("id", claim["user_id"]).execute()
-        claim["person_name"] = profile.data[0]["full_name"] if profile.data else "Unknown"
+        claim["claimer_name"] = profile.data[0]["full_name"] if profile.data else "Unknown"
         claim["claim_type"] = "education"
         employees.append(claim)
 
@@ -175,7 +175,7 @@ async def correct_and_verify_claim(
     update_data = {
         "status": "correction_proposed",
         "corrected_by": user["email"],
-        "correction_reason": correction.reason,
+        "correction_reason": correction.correction_reason,
     }
 
     if claim_type == "employment":
@@ -225,16 +225,37 @@ async def dispute_claim(
         raise HTTPException(status_code=400, detail="Claim is not awaiting verification")
 
     supabase = get_supabase()
+    new_dispute_count = (claim.get("dispute_count") or 0) + 1
+
+    if new_dispute_count >= 5:
+        supabase.table(table).update({
+            "status": "permanently_locked",
+            "disputed_reason": dispute.reason,
+            "dispute_count": new_dispute_count,
+        }).eq("id", claim_id).execute()
+
+        notify_user(
+            user_id=claim["user_id"],
+            type="claim_locked",
+            title="Your claim has been permanently locked",
+            message=f"This claim has been disputed {new_dispute_count} times and can no longer be resubmitted.",
+            claim_id=claim_id,
+            claim_table=table,
+        )
+
+        return {"detail": "Claim permanently locked after 5 disputes", "status": "permanently_locked"}
+
     supabase.table(table).update({
         "status": "disputed",
         "disputed_reason": dispute.reason,
+        "dispute_count": new_dispute_count,
     }).eq("id", claim_id).execute()
 
     notify_user(
         user_id=claim["user_id"],
         type="claim_disputed",
         title=f"Your claim was disputed by {org['name']}",
-        message=f"Reason: {dispute.reason}. You can edit and resubmit your claim.",
+        message=f"Reason: {dispute.reason}. You can edit and resubmit ({5 - new_dispute_count} attempts remaining).",
         claim_id=claim_id,
         claim_table=table,
     )
