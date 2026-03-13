@@ -168,6 +168,14 @@ async def update_employment_claim(
     old_claim = existing.data[0]
     was_verified = old_claim["status"] == "verified"
 
+    # Block resubmission if permanently locked
+    if old_claim["status"] == "permanently_locked":
+        raise HTTPException(status_code=400, detail="This claim has been permanently locked after 5 disputes and cannot be resubmitted")
+
+    # Block resubmission if dispute limit reached
+    if old_claim["status"] == "disputed" and (old_claim.get("dispute_count") or 0) >= 5:
+        raise HTTPException(status_code=400, detail="This claim has been permanently locked after 5 disputes and cannot be resubmitted")
+
     update_data = {}
     for k, v in claim.model_dump().items():
         if v is not None:
@@ -520,6 +528,14 @@ async def update_education_claim(
         raise HTTPException(status_code=404, detail="Claim not found")
 
     old_claim = existing.data[0]
+
+    # Block resubmission if permanently locked
+    if old_claim["status"] == "permanently_locked":
+        raise HTTPException(status_code=400, detail="This claim has been permanently locked after 5 disputes and cannot be resubmitted")
+
+    # Block resubmission if dispute limit reached
+    if old_claim["status"] == "disputed" and (old_claim.get("dispute_count") or 0) >= 5:
+        raise HTTPException(status_code=400, detail="This claim has been permanently locked after 5 disputes and cannot be resubmitted")
 
     update_data = {k: v for k, v in claim.model_dump().items() if v is not None}
     if "institution_domain" in update_data:

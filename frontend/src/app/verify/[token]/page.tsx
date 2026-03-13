@@ -2,17 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
 import { api } from "@/lib/api";
 
 export default function VerifyPage() {
   const params = useParams();
   const router = useRouter();
   const token = params.token as string;
-  const supabase = createClient();
 
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [needsAuth, setNeedsAuth] = useState(false);
   const [claim, setClaim] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -25,62 +21,31 @@ export default function VerifyPage() {
   const [showCorrect, setShowCorrect] = useState(false);
   const [corrections, setCorrections] = useState<Record<string, string>>({});
 
-  // Check auth on mount
+  // Load claim data on mount — no auth needed, token is the auth
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setAuthToken(session.access_token);
-      } else {
-        setNeedsAuth(true);
-        setLoading(false);
-      }
-    });
-  }, [supabase.auth]);
-
-  // Load claim data once we have auth
-  useEffect(() => {
-    if (!authToken) return;
-    api.getVerification(token, authToken)
+    api.getVerification(token)
       .then((data) => { setClaim(data); setLoading(false); })
       .catch((err) => { setError(err.message); setLoading(false); });
-  }, [token, authToken]);
-
-  const handleEmployerLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
-    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
-    setError(""); setSubmitting(true);
-    try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError) throw authError;
-      setAuthToken(data.session!.access_token);
-      setNeedsAuth(false);
-      setLoading(true);
-    } catch (err: unknown) { setError((err as Error).message); }
-    setSubmitting(false);
-  };
+  }, [token]);
 
   const handleVerify = async () => {
-    if (!authToken) return;
     setSubmitting(true);
-    try { await api.verifyClaimByToken(token, authToken); setResult("verified"); setDone(true); }
+    try { await api.verifyClaimByToken(token); setResult("verified"); setDone(true); }
     catch (err: unknown) { setError((err as Error).message); }
     setSubmitting(false);
   };
 
   const handleCorrect = async () => {
-    if (!authToken) return;
     setSubmitting(true);
-    try { await api.correctClaimByToken(token, authToken, corrections); setResult("corrected"); setDone(true); }
+    try { await api.correctClaimByToken(token, corrections); setResult("corrected"); setDone(true); }
     catch (err: unknown) { setError((err as Error).message); }
     setSubmitting(false);
   };
 
   const handleDispute = async () => {
-    if (!authToken || !disputeReason.trim()) return;
+    if (!disputeReason.trim()) return;
     setSubmitting(true);
-    try { await api.disputeClaimByToken(token, authToken, disputeReason); setResult("disputed"); setDone(true); }
+    try { await api.disputeClaimByToken(token, disputeReason); setResult("disputed"); setDone(true); }
     catch (err: unknown) { setError((err as Error).message); }
     setSubmitting(false);
   };
@@ -90,42 +55,6 @@ export default function VerifyPage() {
     return (
       <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // Needs login
-  if (needsAuth) {
-    return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-4 py-12">
-        <div className="animate-fade-in bg-white rounded-2xl border border-gray-200 shadow-xl w-full max-w-md overflow-hidden">
-          <div className="bg-[#0A0A0A] px-8 py-6 text-center">
-            <span className="text-white font-bold text-lg">Stamp</span>
-            <p className="text-gray-400 text-sm mt-1">Sign in to verify a claim</p>
-          </div>
-          <div className="p-8">
-            <p className="text-sm text-gray-500 mb-6">
-              You need to sign in with your work email to verify this claim. If you don&apos;t have an account yet, register your organization first.
-            </p>
-            {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">{error}</div>}
-            <form onSubmit={handleEmployerLogin} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Work email</label>
-                <input name="email" type="email" required placeholder="you@company.com" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
-                <input name="password" type="password" required placeholder="Your password" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
-              </div>
-              <button type="submit" disabled={submitting} className="w-full bg-[#0A0A0A] text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50">
-                {submitting ? "Signing in..." : "Sign in"}
-              </button>
-            </form>
-            <p className="text-xs text-gray-400 text-center mt-6">
-              New to Stamp? <a href="/for-employers" className="font-semibold text-blue-600 hover:text-blue-700">Register your organization</a>
-            </p>
-          </div>
-        </div>
       </div>
     );
   }

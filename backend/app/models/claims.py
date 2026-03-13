@@ -56,6 +56,7 @@ class EmploymentClaimResponse(BaseModel):
     # Dispute
     disputed_reason: Optional[str] = None
     previous_dispute_reason: Optional[str] = None
+    dispute_count: int = 0
     # Status & verification
     status: str
     verified_at: Optional[datetime] = None
@@ -109,6 +110,7 @@ class EducationClaimResponse(BaseModel):
     # Dispute
     disputed_reason: Optional[str] = None
     previous_dispute_reason: Optional[str] = None
+    dispute_count: int = 0
     # Status & verification
     status: str
     verified_at: Optional[datetime] = None

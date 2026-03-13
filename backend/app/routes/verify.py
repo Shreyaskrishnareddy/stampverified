@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
-from app.middleware.auth import get_current_org_admin
+from fastapi import APIRouter, HTTPException
 from app.models.claims import CorrectAndVerifyAction, DisputeAction
 from app.config import get_supabase
 from app.services.notifications import notify_user
@@ -33,24 +32,24 @@ def _find_claim_by_token(token: str) -> tuple[dict, str]:
     raise HTTPException(status_code=404, detail="Verification link not found or expired")
 
 
+def _get_org_for_claim(claim: dict) -> dict:
+    """Look up the organization linked to a claim."""
+    if not claim.get("organization_id"):
+        raise HTTPException(status_code=400, detail="This claim is not linked to an organization")
+    supabase = get_supabase()
+    result = supabase.table("organizations").select("*").eq("id", claim["organization_id"]).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return result.data[0]
+
+
 @router.get("/{token}")
-async def get_claim_for_verification(
-    token: str,
-    user: dict = Depends(get_current_org_admin),
-):
-    """Get claim details for an org admin to review.
-
-    Requires org admin auth. The org admin must belong to the org
-    that the claim is linked to.
-    """
+async def get_claim_for_verification(token: str):
+    """Get claim details for review. No login required — token is the auth."""
     claim, table_name = _find_claim_by_token(token)
-    org = user["org"]
+    org = _get_org_for_claim(claim)
 
-    # Verify the claim belongs to this org
-    if claim.get("organization_id") != org["id"]:
-        raise HTTPException(status_code=403, detail="This claim is not for your organization")
-
-    # Get claimer name (just name — Q43: no full profile)
+    # Get claimer name
     profile = (
         get_supabase()
         .table("profiles")
@@ -66,6 +65,7 @@ async def get_claim_for_verification(
         "claim_type": claim_type,
         "status": claim["status"],
         "claimer_name": claimer_name,
+        "org_name": org["name"],
         "previous_dispute_reason": claim.get("previous_dispute_reason"),
         "user_denial_reason": claim.get("user_denial_reason"),
     }
@@ -93,16 +93,10 @@ async def get_claim_for_verification(
 
 
 @router.post("/{token}/verify")
-async def verify_claim_by_token(
-    token: str,
-    user: dict = Depends(get_current_org_admin),
-):
-    """Verify a claim via email token link. Requires org admin auth."""
+async def verify_claim_by_token(token: str):
+    """Verify a claim. No login required — token is the auth."""
     claim, table_name = _find_claim_by_token(token)
-    org = user["org"]
-
-    if claim.get("organization_id") != org["id"]:
-        raise HTTPException(status_code=403, detail="This claim is not for your organization")
+    org = _get_org_for_claim(claim)
 
     if claim["status"] != "awaiting_verification":
         raise HTTPException(status_code=400, detail="This claim is not awaiting verification")
@@ -129,14 +123,10 @@ async def verify_claim_by_token(
 async def correct_claim_by_token(
     token: str,
     correction: CorrectAndVerifyAction,
-    user: dict = Depends(get_current_org_admin),
 ):
-    """Propose corrections via email token link."""
+    """Propose corrections. No login required — token is the auth."""
     claim, table_name = _find_claim_by_token(token)
-    org = user["org"]
-
-    if claim.get("organization_id") != org["id"]:
-        raise HTTPException(status_code=403, detail="This claim is not for your organization")
+    org = _get_org_for_claim(claim)
 
     if claim["status"] != "awaiting_verification":
         raise HTTPException(status_code=400, detail="This claim is not awaiting verification")
@@ -146,7 +136,7 @@ async def correct_claim_by_token(
 
     update_data = {
         "status": "correction_proposed",
-        "corrected_by": user["email"],
+        "corrected_by": org["verifier_email"],
         "correction_reason": correction.reason,
     }
 
@@ -185,29 +175,49 @@ async def correct_claim_by_token(
 async def dispute_claim_by_token(
     token: str,
     dispute: DisputeAction,
-    user: dict = Depends(get_current_org_admin),
 ):
-    """Dispute a claim via email token link."""
-    claim, table_name = _find_claim_by_token(token)
-    org = user["org"]
+    """Dispute a claim. No login required — token is the auth.
 
-    if claim.get("organization_id") != org["id"]:
-        raise HTTPException(status_code=403, detail="This claim is not for your organization")
+    Tracks dispute_count. After 5 disputes, claim is permanently locked.
+    """
+    claim, table_name = _find_claim_by_token(token)
+    org = _get_org_for_claim(claim)
 
     if claim["status"] != "awaiting_verification":
         raise HTTPException(status_code=400, detail="This claim is not awaiting verification")
 
     supabase = get_supabase()
+    new_dispute_count = (claim.get("dispute_count") or 0) + 1
+
+    if new_dispute_count >= 5:
+        supabase.table(table_name).update({
+            "status": "permanently_locked",
+            "disputed_reason": dispute.reason,
+            "dispute_count": new_dispute_count,
+        }).eq("id", claim["id"]).execute()
+
+        notify_user(
+            user_id=claim["user_id"],
+            type="claim_locked",
+            title="Your claim has been permanently locked",
+            message=f"This claim has been disputed {new_dispute_count} times and can no longer be resubmitted.",
+            claim_id=claim["id"],
+            claim_table=table_name,
+        )
+
+        return {"detail": "Claim permanently locked after 5 disputes", "status": "permanently_locked"}
+
     supabase.table(table_name).update({
         "status": "disputed",
         "disputed_reason": dispute.reason,
+        "dispute_count": new_dispute_count,
     }).eq("id", claim["id"]).execute()
 
     notify_user(
         user_id=claim["user_id"],
         type="claim_disputed",
         title=f"Your claim was disputed by {org['name']}",
-        message=f"Reason: {dispute.reason}. You can edit and resubmit.",
+        message=f"Reason: {dispute.reason}. You can edit and resubmit ({5 - new_dispute_count} attempts remaining).",
         claim_id=claim["id"],
         claim_table=table_name,
     )

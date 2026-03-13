@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.middleware.auth import get_current_user, get_current_org_admin
 from app.services.storage import upload_org_logo
@@ -12,6 +13,78 @@ from app.services.notifications import notify_user, notify_org_admin
 
 router = APIRouter(prefix="/api/organizations", tags=["organizations"])
 
+# Role-based email prefixes accepted for org registration
+ALLOWED_ROLE_PREFIXES = {
+    "hr", "people", "careers", "recruiting", "talent",
+    "registrar", "admissions", "humanresources", "team",
+}
+
+
+def _validate_role_based_email(email: str, expected_domain: str):
+    """Validate that verifier email is a role-based address at the org's domain.
+
+    Accepts patterns like hr@company.com, people@company.com, careers@company.com.
+    Rejects personal emails like john@company.com.
+    """
+    email = email.strip().lower()
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address")
+
+    local_part, email_domain = email.rsplit("@", 1)
+
+    # Domain must match the organization's domain
+    if email_domain != expected_domain:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Verifier email domain must match the organization domain ({expected_domain})"
+        )
+
+    # Local part must be a recognized role-based prefix
+    # Strip dots/hyphens for matching (e.g. "human.resources" -> "humanresources")
+    normalized = re.sub(r"[.\-_]", "", local_part)
+    if normalized not in ALLOWED_ROLE_PREFIXES:
+        allowed_list = ", ".join(sorted(f"{p}@" for p in ALLOWED_ROLE_PREFIXES))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Verifier email must be a role-based address (e.g. {allowed_list}). Personal emails like john@company.com are not accepted."
+        )
+
+
+def _check_no_self_verification(user_id: str, domain: str):
+    """Prevent org registrant from having claims at the same company.
+
+    This is an anti-fraud measure — you can't verify your own claims.
+    """
+    supabase = get_supabase()
+
+    emp_claims = (
+        supabase.table("employment_claims")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("company_domain", domain)
+        .limit(1)
+        .execute()
+    )
+    if emp_claims.data:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot register an organization where you have employment claims. This prevents self-verification."
+        )
+
+    edu_claims = (
+        supabase.table("education_claims")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("institution_domain", domain)
+        .limit(1)
+        .execute()
+    )
+    if edu_claims.data:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot register an organization where you have education claims. This prevents self-verification."
+        )
+
 
 @router.post("/", response_model=OrganizationResponse)
 async def register_organization(
@@ -22,6 +95,8 @@ async def register_organization(
 
     The user's email (from their JWT) becomes the admin_email.
     Domain must be unique — one registration per domain.
+    Verifier email must be role-based (hr@, people@, careers@, etc.).
+    Registrant cannot have claims at the same company (no self-verification).
     """
     supabase = get_supabase()
 
@@ -41,8 +116,17 @@ async def register_organization(
             detail="An organization with this domain is already registered"
         )
 
-    # Default verifier_email to admin's email if not provided
-    verifier_email = (org.verifier_email or user["email"]).strip().lower()
+    # Verifier email is required and must be role-based
+    verifier_email = (org.verifier_email or "").strip().lower()
+    if not verifier_email:
+        raise HTTPException(
+            status_code=400,
+            detail="A role-based verifier email is required (e.g. hr@company.com)"
+        )
+    _validate_role_based_email(verifier_email, domain)
+
+    # Anti-fraud: registrant cannot have claims at this company
+    _check_no_self_verification(user["id"], domain)
 
     data = {
         "name": org.name.strip(),

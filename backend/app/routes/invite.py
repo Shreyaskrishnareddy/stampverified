@@ -1,3 +1,5 @@
+import hmac
+import hashlib
 import base64
 import json
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,16 +15,17 @@ class InviteRequest(BaseModel):
     company_domain: str
 
 
+def _sign_payload(payload: str, secret: str) -> str:
+    """Create HMAC-SHA256 signature for a payload."""
+    return hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+
+
 @router.post("/generate")
 async def generate_invite_link(
     invite: InviteRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Generate a shareable invite link for a company not yet on Stamp.
-
-    Returns a URL the user can copy and send to anyone at the company.
-    The link leads to the invite landing page with a base64-encoded code.
-    """
+    """Generate an HMAC-signed invite link for a company not yet on Stamp."""
     settings = get_settings()
 
     domain = invite.company_domain.strip().lower()
@@ -37,13 +40,15 @@ async def generate_invite_link(
     profile = supabase.table("profiles").select("full_name").eq("id", user["id"]).execute()
     inviter_name = profile.data[0]["full_name"] if profile.data else "Someone"
 
-    # Encode invite data as URL-safe base64 code
+    # HMAC-sign the invite payload
     invite_data = json.dumps({
         "company": invite.company_name,
         "domain": domain,
         "from": inviter_name,
-    })
-    code = base64.urlsafe_b64encode(invite_data.encode()).decode().rstrip("=")
+    }, separators=(",", ":"))  # compact JSON for consistent signing
+    payload_b64 = base64.urlsafe_b64encode(invite_data.encode()).decode().rstrip("=")
+    signature = _sign_payload(payload_b64, settings.invite_hmac_secret)
+    code = f"{payload_b64}.{signature}"
     invite_url = f"{settings.frontend_url}/invite/{code}"
 
     return {
@@ -53,12 +58,24 @@ async def generate_invite_link(
     }
 
 
-@router.get("/decode/{code}")
+@router.get("/decode/{code:path}")
 async def decode_invite(code: str):
-    """Decode an invite code to get company info. Public endpoint."""
+    """Decode and verify an HMAC-signed invite code. Public endpoint."""
+    settings = get_settings()
+
+    parts = code.split(".")
+    if len(parts) != 2:
+        raise HTTPException(status_code=400, detail="Invalid invite link")
+
+    payload_b64, signature = parts
+
+    # Verify HMAC signature
+    expected_sig = _sign_payload(payload_b64, settings.invite_hmac_secret)
+    if not hmac.compare_digest(signature, expected_sig):
+        raise HTTPException(status_code=400, detail="Invalid or tampered invite link")
+
     try:
-        # Add back padding
-        padded = code + "=" * (4 - len(code) % 4)
+        padded = payload_b64 + "=" * (4 - len(payload_b64) % 4)
         data = json.loads(base64.urlsafe_b64decode(padded).decode())
         return {
             "company": data.get("company", ""),
@@ -66,4 +83,4 @@ async def decode_invite(code: str):
             "from": data.get("from", "Someone"),
         }
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid invite code")
+        raise HTTPException(status_code=400, detail="Invalid invite link")

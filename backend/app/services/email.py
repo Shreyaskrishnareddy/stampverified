@@ -11,8 +11,10 @@ def send_verification_email(
 ):
     """Send a verification request email to an org's designated verifier.
 
-    The email contains a link to the verification page where the org admin
-    must log in to verify/correct/dispute the claim.
+    No login required — the link goes directly to the verification page
+    where the verifier can take action immediately.
+
+    Template: minimal, professional, Stripe-receipt style.
     """
     settings = get_settings()
 
@@ -22,41 +24,45 @@ def send_verification_email(
 
     resend.api_key = settings.resend_api_key
 
-    subject = f"Verification request: {claimer_name}"
+    subject = f"Verify {claimer_name}'s {claim_type} claim"
 
     html = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
-        <div style="margin-bottom: 32px;">
-            <span style="font-size: 18px; font-weight: 700; color: #0A0A0A; letter-spacing: -0.02em;">Stamp</span>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 0;">
+
+        <div style="padding: 0 20px; margin-bottom: 32px;">
+            <span style="font-size: 17px; font-weight: 700; color: #0A0A0A; letter-spacing: -0.03em;">Stamp</span>
         </div>
 
-        <h2 style="font-size: 20px; font-weight: 600; color: #0A0A0A; margin-bottom: 8px;">
-            Verification Request
-        </h2>
-        <p style="font-size: 15px; color: #6B7280; line-height: 1.6; margin-bottom: 24px;">
-            <strong style="color: #0A0A0A;">{claimer_name}</strong> claims the following {claim_type}:
-        </p>
+        <div style="border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; padding: 24px 20px; margin-bottom: 24px;">
+            <p style="font-size: 13px; color: #6B7280; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">Verification Request</p>
+            <p style="font-size: 15px; color: #111827; margin: 0; line-height: 1.5;">
+                <strong>{claimer_name}</strong> submitted a {claim_type} claim for your organization to verify.
+            </p>
+        </div>
 
-        <div style="background: #F9FAFB; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #E5E7EB;">
-            <p style="font-size: 15px; color: #0A0A0A; margin: 0; line-height: 1.8;">
+        <div style="background: #F9FAFB; border-radius: 8px; padding: 20px; margin: 0 20px 24px 20px;">
+            <p style="font-size: 14px; color: #111827; margin: 0; line-height: 1.8;">
                 {claim_details}
             </p>
         </div>
 
-        <p style="font-size: 15px; color: #6B7280; line-height: 1.6; margin-bottom: 24px;">
-            Log in to your employer dashboard to verify, correct, or dispute this claim.
-        </p>
+        <div style="padding: 0 20px; margin-bottom: 32px;">
+            <a href="{verification_url}"
+               style="display: inline-block; background: #111827; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                Review this claim
+            </a>
+        </div>
 
-        <a href="{verification_url}"
-           style="display: inline-block; background: #2563EB; color: #ffffff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 500;">
-            Review Claim
-        </a>
+        <div style="padding: 0 20px; border-top: 1px solid #F3F4F6; padding-top: 20px;">
+            <p style="font-size: 12px; color: #9CA3AF; margin: 0; line-height: 1.6;">
+                You can verify, correct, or dispute this claim directly from the link above.
+                No account or login required.
+            </p>
+            <p style="font-size: 12px; color: #9CA3AF; margin: 8px 0 0 0; line-height: 1.6;">
+                Stamp &mdash; stampverified.com
+            </p>
+        </div>
 
-        <p style="font-size: 13px; color: #9CA3AF; margin-top: 40px; line-height: 1.5;">
-            This email was sent by Stamp, a platform for verified professional identity.
-            You received this because your organization is registered on Stamp and
-            {claimer_name} submitted a claim for verification.
-        </p>
     </div>
     """
 
@@ -86,33 +92,38 @@ def send_invite_email(
     subject = f"{inviter_name} wants {company_name} to join Stamp"
 
     html = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
-        <div style="margin-bottom: 32px;">
-            <span style="font-size: 18px; font-weight: 700; color: #0A0A0A; letter-spacing: -0.02em;">Stamp</span>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 0;">
+
+        <div style="padding: 0 20px; margin-bottom: 32px;">
+            <span style="font-size: 17px; font-weight: 700; color: #0A0A0A; letter-spacing: -0.03em;">Stamp</span>
         </div>
 
-        <h2 style="font-size: 20px; font-weight: 600; color: #0A0A0A; margin-bottom: 8px;">
-            You're invited to join Stamp
-        </h2>
-        <p style="font-size: 15px; color: #6B7280; line-height: 1.6; margin-bottom: 24px;">
-            <strong style="color: #0A0A0A;">{inviter_name}</strong> wants
-            <strong style="color: #0A0A0A;">{company_name}</strong> to verify their professional claims on Stamp.
-        </p>
+        <div style="border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; padding: 24px 20px; margin-bottom: 24px;">
+            <p style="font-size: 13px; color: #6B7280; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">Organization Invite</p>
+            <p style="font-size: 15px; color: #111827; margin: 0; line-height: 1.5;">
+                <strong>{inviter_name}</strong> wants <strong>{company_name}</strong> to verify their professional claims on Stamp.
+            </p>
+        </div>
 
-        <p style="font-size: 15px; color: #6B7280; line-height: 1.6; margin-bottom: 24px;">
-            Stamp is a platform where organizations verify their employees' and graduates'
-            career claims. Registration takes 2 minutes and is free.
-        </p>
+        <div style="padding: 0 20px; margin-bottom: 24px;">
+            <p style="font-size: 14px; color: #6B7280; line-height: 1.6; margin: 0;">
+                Registration takes 2 minutes and is free. Once registered, you can verify employee and graduate claims with one click.
+            </p>
+        </div>
 
-        <a href="{invite_url}"
-           style="display: inline-block; background: #2563EB; color: #ffffff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 500;">
-            Register {company_name}
-        </a>
+        <div style="padding: 0 20px; margin-bottom: 32px;">
+            <a href="{invite_url}"
+               style="display: inline-block; background: #111827; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                Register {company_name}
+            </a>
+        </div>
 
-        <p style="font-size: 13px; color: #9CA3AF; margin-top: 40px; line-height: 1.5;">
-            This email was sent by Stamp. You received this because {inviter_name}
-            invited {company_name} to join the platform.
-        </p>
+        <div style="padding: 0 20px; border-top: 1px solid #F3F4F6; padding-top: 20px;">
+            <p style="font-size: 12px; color: #9CA3AF; margin: 0; line-height: 1.6;">
+                Stamp &mdash; stampverified.com
+            </p>
+        </div>
+
     </div>
     """
 

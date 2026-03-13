@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Optional
 from app.middleware.auth import get_current_user
 from app.config import get_supabase
 
@@ -16,10 +15,7 @@ async def change_password(
     data: PasswordChange,
     user: dict = Depends(get_current_user),
 ):
-    """Change the current user's password.
-
-    Uses Supabase Admin API to update the password.
-    """
+    """Change the current user's password."""
     if len(data.new_password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
@@ -39,26 +35,23 @@ async def change_password(
 async def delete_account(user: dict = Depends(get_current_user)):
     """Delete the current user's account and all associated data.
 
-    Deletes: profile, all claims, all notifications, auth user.
+    Uses an atomic PostgreSQL function — everything deletes in a single
+    transaction, or nothing does. Then removes the auth user separately.
     This is irreversible.
     """
     supabase = get_supabase()
     user_id = user["id"]
 
-    # Delete claims (cascades from profile FK, but explicit for safety)
-    supabase.table("employment_claims").delete().eq("user_id", user_id).execute()
-    supabase.table("education_claims").delete().eq("user_id", user_id).execute()
+    # Atomic deletion of all user data via PostgreSQL function
+    try:
+        supabase.rpc("delete_user_account", {"target_user_id": user_id}).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Account deletion failed: {str(e)}")
 
-    # Delete notifications
-    supabase.table("notifications").delete().eq("user_id", user_id).execute()
-
-    # Delete profile
-    supabase.table("profiles").delete().eq("id", user_id).execute()
-
-    # Delete auth user
+    # Delete auth user (separate from DB transaction — Supabase Admin API)
     try:
         supabase.auth.admin.delete_user(user_id)
     except Exception as e:
-        print(f"[SETTINGS] Failed to delete auth user: {e}")
+        print(f"[SETTINGS] Failed to delete auth user (DB data already deleted): {e}")
 
     return {"detail": "Account deleted"}

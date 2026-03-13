@@ -153,18 +153,18 @@ export const api = {
       method: "POST", headers: authHeaders(token), body: JSON.stringify({ end_date: endDate }),
     }),
 
-  // ── Verification (token-based, for org admins from email links) ──
-  getVerification: (token: string, authToken: string) =>
-    request(`/api/verify/${token}`, { headers: authHeaders(authToken) }),
+  // ── Verification (token-based, no login required — token is the auth) ──
+  getVerification: (token: string) =>
+    request(`/api/verify/${token}`),
 
-  verifyClaimByToken: (token: string, authToken: string) =>
-    request(`/api/verify/${token}/verify`, { method: "POST", headers: authHeaders(authToken) }),
+  verifyClaimByToken: (token: string) =>
+    request(`/api/verify/${token}/verify`, { method: "POST" }),
 
-  correctClaimByToken: (token: string, authToken: string, data: Record<string, unknown>) =>
-    request(`/api/verify/${token}/correct`, { method: "POST", headers: authHeaders(authToken), body: JSON.stringify(data) }),
+  correctClaimByToken: (token: string, data: Record<string, unknown>) =>
+    request(`/api/verify/${token}/correct`, { method: "POST", body: JSON.stringify(data) }),
 
-  disputeClaimByToken: (token: string, authToken: string, reason: string) =>
-    request(`/api/verify/${token}/dispute`, { method: "POST", headers: authHeaders(authToken), body: JSON.stringify({ reason }) }),
+  disputeClaimByToken: (token: string, reason: string) =>
+    request(`/api/verify/${token}/dispute`, { method: "POST", body: JSON.stringify({ reason }) }),
 
   // ── Notifications ──
   getNotifications: (token: string) =>

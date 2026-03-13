@@ -97,7 +97,7 @@
 |--------------------------|------------------------------------------|
 | **Email provider**       | Enabled                                  |
 | **Google OAuth**         | Enabled                                  |
-| **Confirm email**        | Off (can enable later)                   |
+| **Confirm email**        | **Must enable before launch** — required for email/password signups per PRODUCTMAP |
 | **User signups**         | Allowed                                  |
 | **Site URL**             | `https://www.stampverified.com`           |
 | **Redirect URLs**        | `https://www.stampverified.com/auth/callback`, `https://stampverified.com/auth/callback`, `https://stampweb.vercel.app/auth/callback` |
