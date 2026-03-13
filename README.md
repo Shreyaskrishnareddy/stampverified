@@ -81,7 +81,6 @@ User signs up → adds claim ("Software Engineer at Acme Corp")
 │  full_name              │      │  domain (unique)         │
 │  headline               │      │  org_type                │
 │  location               │      │  admin_email             │
-│  avatar_url             │      │  verifier_name           │
 │  trust_score            │      │  verifier_email          │
 │  created_at             │      │  logo_url                │
 │  updated_at             │      │  is_domain_verified      │
@@ -435,6 +434,8 @@ awaiting_org ─────────────> (org registers) ───�
 - **5 dispute limit.** After 5 disputes on the same claim, it locks permanently.
 - **Corrections use the org's version.** If user accepts corrections, the org's data goes on the profile.
 - **Verified claims are point-in-time stamps.** "As of [date], [org] confirmed this claim."
+- **Public profiles only show verified claims.** Non-verified statuses are never exposed publicly.
+- **`verified_by_org` is audit-only.** Stored in DB for the audit trail but not displayed on public profiles (redundant — verification always comes from the claimed org).
 
 ---
 
@@ -478,7 +479,7 @@ Base URL: `https://stamp-api-qtf9.onrender.com`
 |--------|----------|-------------|
 | GET | `/` | API info |
 | GET | `/health` | Health check |
-| GET | `/api/profile/{username}` | Public profile with verified claims |
+| GET | `/api/profile/{username}` | Public profile (only verified claims) |
 | GET | `/api/verify/{token}` | Load claim for verification (token is auth) |
 | POST | `/api/verify/{token}/verify` | Verify a claim |
 | POST | `/api/verify/{token}/correct` | Propose corrections |
