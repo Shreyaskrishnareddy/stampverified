@@ -57,7 +57,7 @@ function RegisterContent() {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback?redirect=/for-employers/register` },
         });
         if (signUpError) throw signUpError;
         if (!signUpData.session) {

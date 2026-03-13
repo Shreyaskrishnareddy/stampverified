@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { Suspense } from "react";
 
-export default function AuthCallback() {
+function CallbackContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/dashboard";
 
   useEffect(() => {
     const supabase = createClient();
@@ -14,7 +17,7 @@ export default function AuthCallback() {
       (event, session) => {
         if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
           if (session) {
-            router.push("/dashboard");
+            router.push(redirect);
           }
         }
       }
@@ -22,12 +25,12 @@ export default function AuthCallback() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.push("/dashboard");
+        router.push(redirect);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, [router, redirect]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
@@ -36,5 +39,19 @@ export default function AuthCallback() {
         <p className="text-sm text-gray-500">Signing you in...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <CallbackContent />
+    </Suspense>
   );
 }
