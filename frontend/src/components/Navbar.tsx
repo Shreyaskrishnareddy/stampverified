@@ -108,16 +108,16 @@ export default function Navbar() {
           ) : (
             <div className="flex items-center gap-3">
               <Link
-                href="/?auth=signin"
+                href={isEmployerRoute ? "/for-employers/login" : "/?auth=signin"}
                 className="text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition-all"
               >
                 Sign in
               </Link>
               <Link
-                href="/?auth=signup"
+                href={isEmployerRoute ? "/for-employers/register" : "/?auth=signup"}
                 className="text-sm font-medium text-white bg-[#0A0A0A] hover:bg-gray-800 px-4 py-2 rounded-lg transition-colors"
               >
-                Get Started
+                {isEmployerRoute ? "Register" : "Get Started"}
               </Link>
             </div>
           )}
