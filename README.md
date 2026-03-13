@@ -427,6 +427,7 @@ awaiting_org ─────────────> (org registers) ───�
 ### Key Rules
 
 - **Only HR verifies.** One authorized role-based email per org (hr@, people@, careers@).
+- **Organization email = login + verifier.** The org's role-based email is used to both sign in and receive verification requests. No separate admin vs verifier distinction on the frontend.
 - **Users never provide verifier emails.** Trust comes from org-level verification only.
 - **Companies must come from Clearbit autocomplete.** No manual entry. Prevents fake companies.
 - **No self-verification.** Org registrant cannot have claims at the same company.
@@ -447,8 +448,9 @@ awaiting_org ─────────────> (org registers) ───�
 2. Claim goes to `awaiting_org`
 3. User clicks "Invite your company" and gets an HMAC-signed invite link
 4. User shares the link with HR (email, Slack, WhatsApp)
-5. HR clicks link, registers org with a role-based email (hr@company.com)
-6. All pending claims for that domain auto-link and get sent for verification
+5. HR clicks link, registers org in a single form (name, domain, type, org email, password)
+6. The organization email (e.g. hr@company.com) serves as both login credential and verifier email
+7. All pending claims for that domain auto-link and get sent for verification
 
 ### Anti-Fraud Layers
 
@@ -628,16 +630,24 @@ stampverified/
         │   ├── CompanyAutocomplete.tsx   # Clearbit only, no manual entry
         │   ├── UniversityAutocomplete.tsx
         │   ├── NotificationBell.tsx
-        │   └── Navbar.tsx
+        │   └── Navbar.tsx            # Role-aware (employer vs candidate)
         └── app/
             ├── layout.tsx
-            ├── page.tsx             # Landing page
-            ├── auth/callback/
-            ├── dashboard/page.tsx   # User dashboard
+            ├── page.tsx             # Landing page + auth modal
+            ├── auth/callback/       # OAuth/email redirect handler
+            ├── dashboard/
+            │   ├── page.tsx         # User dashboard + profile creation
+            │   └── settings/        # Password, delete account
+            ├── employer/
+            │   ├── dashboard/       # Org admin: pending claims, employees
+            │   └── settings/        # Org name, email, logo, password
             ├── verify/[token]/      # Verification page (no login)
             ├── profile/[username]/  # Public profile
             ├── invite/[code]/       # Invite landing page
-            └── for-employers/       # Employer registration
+            └── for-employers/
+                ├── page.tsx         # For Employers/Individuals toggle
+                ├── register/        # Single-form org registration
+                └── login/           # Organization sign in
 ```
 
 ---
