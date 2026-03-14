@@ -273,7 +273,7 @@ function LandingContent() {
           <div className="mt-12 grid md:grid-cols-3 gap-6">
             {[
               { n: "1", title: "Register your company", desc: "Verify your domain. Invite your hiring team. Takes 2 minutes. Free to start." },
-              { n: "2", title: "Post and paste", desc: "Paste your job description. We extract the details. Review and publish in under 60 seconds." },
+              { n: "2", title: "Post in 60 seconds", desc: "Paste from your careers page or ATS. We pull out the details. Review and publish." },
               { n: "3", title: "Hire with confidence", desc: "Every applicant has a verified background. Search talent directly. No background check needed." },
             ].map(step => (
               <Section key={step.n}>
