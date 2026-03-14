@@ -140,22 +140,27 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('resumes', 'resumes', FALSE)
 ON CONFLICT (id) DO NOTHING;
 
+-- Drop policies if they exist (makes it safe to re-run)
+DROP POLICY IF EXISTS "Users upload own resume" ON storage.objects;
+DROP POLICY IF EXISTS "Users update own resume" ON storage.objects;
+DROP POLICY IF EXISTS "Users delete own resume" ON storage.objects;
+
 -- Policy: only the owner can upload/update their resume
-CREATE POLICY IF NOT EXISTS "Users upload own resume"
+CREATE POLICY "Users upload own resume"
     ON storage.objects FOR INSERT
     WITH CHECK (
         bucket_id = 'resumes'
         AND auth.uid()::text = (storage.foldername(name))[1]
     );
 
-CREATE POLICY IF NOT EXISTS "Users update own resume"
+CREATE POLICY "Users update own resume"
     ON storage.objects FOR UPDATE
     USING (
         bucket_id = 'resumes'
         AND auth.uid()::text = (storage.foldername(name))[1]
     );
 
-CREATE POLICY IF NOT EXISTS "Users delete own resume"
+CREATE POLICY "Users delete own resume"
     ON storage.objects FOR DELETE
     USING (
         bucket_id = 'resumes'
