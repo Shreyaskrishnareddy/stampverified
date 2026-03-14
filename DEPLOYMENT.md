@@ -193,11 +193,10 @@ stamp/
             │       └── page.tsx     # OAuth/email callback handler
             ├── dashboard/
             │   └── page.tsx         # Authenticated dashboard
-            └── profile/
-                └── [username]/
-                    ├── page.tsx     # Public profile page
-                    ├── layout.tsx   # Dynamic SEO meta tags
-                    └── opengraph-image.tsx  # Dynamic OG image (edge)
+            └── [username]/
+                ├── page.tsx     # Public profile page
+                ├── layout.tsx   # Dynamic SEO meta tags
+                └── opengraph-image.tsx  # Dynamic OG image (edge)
 ```
 
 ---

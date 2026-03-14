@@ -643,7 +643,7 @@ stampverified/
             │   ├── dashboard/       # Org admin: pending claims, employees
             │   └── settings/        # Org name, email, logo, password
             ├── verify/[token]/      # Verification page (no login)
-            ├── profile/[username]/  # Public profile
+            ├── [username]/          # Public profile
             ├── invite/[code]/       # Invite landing page
             └── for-employers/
                 ├── page.tsx         # For Employers/Individuals toggle
