@@ -27,6 +27,8 @@ async def generate_invite_link(
 ):
     """Generate an HMAC-signed invite link for a company not yet on Stamp."""
     settings = get_settings()
+    if not settings.invite_hmac_secret:
+        raise HTTPException(status_code=500, detail="Invite signing is not configured")
 
     domain = invite.company_domain.strip().lower()
 

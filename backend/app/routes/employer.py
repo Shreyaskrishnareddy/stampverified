@@ -1,8 +1,8 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
+from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-from app.middleware.auth import get_current_org_admin
+from app.middleware.auth import get_current_company_member, require_permission
 from app.models.claims import CorrectAndVerifyAction, DisputeAction
 from app.config import get_supabase
 from app.services.notifications import notify_user
@@ -20,9 +20,11 @@ class DepartureRequest(BaseModel):
 
 
 @router.get("/claims")
-async def get_pending_claims(user: dict = Depends(get_current_org_admin)):
+async def get_pending_claims(user: dict = Depends(get_current_company_member)):
     """Get all claims pending verification for this org.
-    Includes awaiting_verification + claims where user denied a correction.
+
+    Any active member can view pending claims. Only members with
+    can_verify_claims permission can take action on them.
     """
     org = user["org"]
     supabase = get_supabase()
@@ -63,8 +65,11 @@ async def get_pending_claims(user: dict = Depends(get_current_org_admin)):
 
 
 @router.get("/employees")
-async def get_verified_employees(user: dict = Depends(get_current_org_admin)):
-    """Get all verified employees/graduates for this org."""
+async def get_verified_employees(user: dict = Depends(get_current_company_member)):
+    """Get all verified employees/graduates for this org.
+
+    Any active member can view verified employees.
+    """
     org = user["org"]
     supabase = get_supabase()
 
@@ -125,12 +130,17 @@ def _get_claim_for_org(claim_id: str, table: str, org_id: str) -> dict:
 @router.post("/claims/{claim_id}/verify")
 async def verify_claim(
     claim_id: str,
-    claim_type: str,  # query param: "employment" or "education"
-    user: dict = Depends(get_current_org_admin),
+    claim_type: Literal["employment", "education"],
+    user: dict = Depends(get_current_company_member),
 ):
-    """Verify a claim as-is. No corrections needed."""
+    """Verify a claim as-is. No corrections needed.
+
+    Requires can_verify_claims permission.
+    """
+    require_permission(user["member"], "can_verify_claims")
+
     org = user["org"]
-    table = "employment_claims" if claim_type == "employment" else "education_claims"
+    table = f"{claim_type}_claims"
     claim = _get_claim_for_org(claim_id, table, org["id"])
 
     if claim["status"] != "awaiting_verification":
@@ -139,7 +149,7 @@ async def verify_claim(
     supabase = get_supabase()
     supabase.table(table).update({
         "status": "verified",
-        "verified_at": datetime.utcnow().isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
         "verified_by_org": org["name"],
     }).eq("id", claim_id).execute()
 
@@ -158,13 +168,18 @@ async def verify_claim(
 @router.post("/claims/{claim_id}/correct")
 async def correct_and_verify_claim(
     claim_id: str,
-    claim_type: str,
+    claim_type: Literal["employment", "education"],
     correction: CorrectAndVerifyAction,
-    user: dict = Depends(get_current_org_admin),
+    user: dict = Depends(get_current_company_member),
 ):
-    """Propose corrections to a claim. Sent back to user for acceptance."""
+    """Propose corrections to a claim. Sent back to user for acceptance.
+
+    Requires can_verify_claims permission.
+    """
+    require_permission(user["member"], "can_verify_claims")
+
     org = user["org"]
-    table = "employment_claims" if claim_type == "employment" else "education_claims"
+    table = f"{claim_type}_claims"
     claim = _get_claim_for_org(claim_id, table, org["id"])
 
     if claim["status"] != "awaiting_verification":
@@ -212,13 +227,18 @@ async def correct_and_verify_claim(
 @router.post("/claims/{claim_id}/dispute")
 async def dispute_claim(
     claim_id: str,
-    claim_type: str,
+    claim_type: Literal["employment", "education"],
     dispute: DisputeAction,
-    user: dict = Depends(get_current_org_admin),
+    user: dict = Depends(get_current_company_member),
 ):
-    """Dispute a claim entirely. Claim is hidden from public profile."""
+    """Dispute a claim entirely. Claim is hidden from public profile.
+
+    Requires can_verify_claims permission.
+    """
+    require_permission(user["member"], "can_verify_claims")
+
     org = user["org"]
-    table = "employment_claims" if claim_type == "employment" else "education_claims"
+    table = f"{claim_type}_claims"
     claim = _get_claim_for_org(claim_id, table, org["id"])
 
     if claim["status"] != "awaiting_verification":
@@ -272,11 +292,15 @@ async def dispute_claim(
 async def mark_as_departed(
     claim_id: str,
     departure: DepartureRequest,
-    user: dict = Depends(get_current_org_admin),
+    user: dict = Depends(get_current_company_member),
 ):
     """Mark a verified employee as departed. Updates end date, sets is_current to false.
     Only works on employment claims (not education).
+
+    Requires can_verify_claims permission.
     """
+    require_permission(user["member"], "can_verify_claims")
+
     org = user["org"]
     claim = _get_claim_for_org(claim_id, "employment_claims", org["id"])
 

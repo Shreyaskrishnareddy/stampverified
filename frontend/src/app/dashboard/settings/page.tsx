@@ -11,6 +11,7 @@ export default function SettingsPage() {
   const supabase = createClient();
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -18,7 +19,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [profile, setProfile] = useState<{ username?: string } | null>(null);
+  const [profile, setProfile] = useState<{ username?: string; notification_preferences?: Record<string, Record<string, boolean>> } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -39,9 +40,9 @@ export default function SettingsPage() {
     if (!token) return;
     setLoading(true); setError(""); setMessage("");
     try {
-      await api.changePassword(token, newPassword);
+      await api.changePassword(token, currentPassword, newPassword);
       setMessage("Password updated successfully!");
-      setNewPassword(""); setConfirmPassword("");
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
     } catch (err: unknown) { setError((err as Error).message); }
     setLoading(false);
   };
@@ -50,7 +51,7 @@ export default function SettingsPage() {
     if (!token) return;
     setLoading(true); setError("");
     try {
-      await api.deleteAccount(token);
+      await api.deleteAccount(token, "deletemyaccount");
       await supabase.auth.signOut();
       router.push("/");
     } catch (err: unknown) { setError((err as Error).message); setLoading(false); }
@@ -97,6 +98,10 @@ export default function SettingsPage() {
           {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">{error}</div>}
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Current password</label>
+              <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required placeholder="Your current password" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+            </div>
+            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">New password</label>
               <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} placeholder="Min 8 characters" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
             </div>
@@ -108,6 +113,66 @@ export default function SettingsPage() {
               {loading ? "Updating..." : "Update password"}
             </button>
           </form>
+        </div>
+
+        {/* Notification preferences */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-x-6 gap-y-3 items-center">
+              <div />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">In-app</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Email</p>
+
+              {[
+                { key: "application_status", label: "Application status updates" },
+                { key: "new_message", label: "New messages" },
+                { key: "new_outreach", label: "Recruiter outreach" },
+                { key: "claim_update", label: "Claim verified or disputed" },
+              ].map(item => {
+                const inAppOn = profile?.notification_preferences?.in_app?.[item.key] ?? true;
+                const emailOn = profile?.notification_preferences?.email?.[item.key] ?? false;
+                return (
+                  <div key={item.key} className="contents">
+                    <p className="text-sm text-gray-700">{item.label}</p>
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={inAppOn}
+                        onChange={async (e) => {
+                          if (!token || !profile) return;
+                          const newPrefs = {
+                            ...profile.notification_preferences,
+                            in_app: { ...(profile.notification_preferences?.in_app || {}), [item.key]: e.target.checked },
+                          };
+                          setProfile(p => p ? { ...p, notification_preferences: newPrefs } : p);
+                          try { await api.updateProfile(token, { notification_preferences: newPrefs }); } catch { /* empty */ }
+                        }}
+                        className="rounded border-gray-300 text-blue-600"
+                      />
+                    </div>
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={emailOn}
+                        onChange={async (e) => {
+                          if (!token || !profile) return;
+                          const newPrefs = {
+                            ...profile.notification_preferences,
+                            email: { ...(profile.notification_preferences?.email || {}), [item.key]: e.target.checked },
+                          };
+                          setProfile(p => p ? { ...p, notification_preferences: newPrefs } : p);
+                          try { await api.updateProfile(token, { notification_preferences: newPrefs }); } catch { /* empty */ }
+                        }}
+                        className="rounded border-gray-300 text-blue-600"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-gray-300">In-app defaults on. Email defaults off. Changes save automatically.</p>
+          </div>
         </div>
 
         {/* Delete account */}

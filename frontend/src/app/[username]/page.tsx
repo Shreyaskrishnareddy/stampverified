@@ -94,18 +94,18 @@ export default function PublicProfile() {
                   ) : null}
                 </div>
               </div>
-              <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3">
-                <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg>
+              <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
+                <svg viewBox="0 0 24 24" fill="#3B82F6" className="w-6 h-6"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>
                 <div>
-                  <p className="text-lg font-bold text-emerald-700">{verifiedCount} <span className="text-sm font-medium text-emerald-500">of {totalCount}</span></p>
-                  <p className="text-xs font-medium text-emerald-500">verified</p>
+                  <p className="text-lg font-bold text-blue-700">{verifiedCount} <span className="text-sm font-medium text-blue-500">of {totalCount}</span></p>
+                  <p className="text-xs font-medium text-blue-500">confirmed</p>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 pt-5 border-t border-gray-100 flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
               <span className="text-gray-400"><strong className="text-gray-900 font-semibold">{totalCount}</strong> claims</span>
-              <span className="text-gray-400"><strong className="text-emerald-600 font-semibold">{verifiedCount}</strong> source-verified</span>
+              <span className="text-gray-400"><strong className="text-blue-600 font-semibold">{verifiedCount}</strong> confirmed</span>
               <button
                 onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                 className="sm:ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
@@ -115,7 +115,7 @@ export default function PublicProfile() {
               </button>
             </div>
             {verifiedCount > 0 && (
-              <p className="mt-3 text-xs text-gray-400">Only source-verified claims receive a verified badge. Each verification is confirmed directly by the organization.</p>
+              <p className="mt-3 text-xs text-gray-400">Each confirmed claim was checked directly by the employer or university.</p>
             )}
           </div>
         </div>
@@ -153,16 +153,23 @@ export default function PublicProfile() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
               </svg>
             </div>
-            <p className="text-gray-500 font-medium mb-1">No verified claims yet</p>
-            <p className="text-sm text-gray-400">This profile is waiting for source verification.</p>
+            <p className="text-gray-500 font-medium mb-1">No confirmed claims yet</p>
+            <p className="text-sm text-gray-400">This profile is waiting for confirmation from the source.</p>
           </div>
         )}
       </div>
 
-      <footer className="border-t border-gray-100 py-8 px-6 text-center">
-        <p className="text-sm text-gray-400">
-          Verified on <a href="/" className="font-semibold text-gray-600 hover:text-gray-900 transition-colors">stampverified.com</a>
-        </p>
+      <footer className="border-t border-gray-100 py-8 px-6">
+        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-sm text-gray-400">
+            Confirmed on <a href="/" className="font-semibold text-gray-600 hover:text-gray-900 transition-colors">Stamp</a>
+          </p>
+          <div className="flex items-center gap-4 text-xs text-gray-400">
+            <a href="/jobs" className="hover:text-gray-600 transition-colors">Browse Jobs</a>
+            <a href="/companies" className="hover:text-gray-600 transition-colors">Companies</a>
+            <a href="/?auth=signup" className="hover:text-gray-600 transition-colors">Get Started</a>
+          </div>
+        </div>
       </footer>
     </div>
   );

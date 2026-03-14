@@ -14,6 +14,7 @@ RESERVED_USERNAMES = {
     "help", "support", "terms", "privacy", "contact", "blog", "pricing",
     "careers", "stamp", "home", "index", "app", "static", "public",
     "favicon", "robots", "sitemap", "not-found", "error", "404", "500",
+    "jobs", "companies", "talent", "messages", "applications",
 }
 
 USERNAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$")
@@ -141,9 +142,24 @@ async def get_public_profile(username: str):
         .execute()
     )
 
-    all_claims = (employment.data or []) + (education.data or [])
-    verified_count = sum(1 for c in all_claims if c["status"] == "verified")
-    total_count = len(all_claims)
+    verified_count = len(employment.data or []) + len(education.data or [])
+
+    # Total claims count: all non-locked statuses (for the "X of Y" display)
+    all_emp = (
+        supabase.table("employment_claims")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .neq("status", "permanently_locked")
+        .execute()
+    )
+    all_edu = (
+        supabase.table("education_claims")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .neq("status", "permanently_locked")
+        .execute()
+    )
+    total_count = (all_emp.count or 0) + (all_edu.count or 0)
 
     return {
         "profile": profile.data[0],

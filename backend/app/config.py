@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     frontend_url: str = "http://localhost:3000"
     environment: str = "development"
-    invite_hmac_secret: str = "stamp-invite-default-change-me"
+    invite_hmac_secret: str = ""
     cron_secret: str = ""
 
     class Config:

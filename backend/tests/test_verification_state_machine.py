@@ -897,14 +897,15 @@ class TestAccountDeletion:
     @patch("app.routes.settings.get_supabase")
     @pytest.mark.asyncio
     async def test_delete_calls_rpc(self, mock_get_sb):
-        from app.routes.settings import delete_account
+        from app.routes.settings import delete_account, AccountDeleteConfirm
 
         sb = MagicMock()
         sb.rpc.return_value.execute.return_value = mock_supabase_response([])
         mock_get_sb.return_value = sb
 
         user = {"id": "user-to-delete", "email": "delete@test.com"}
-        result = await delete_account(user)
+        confirm = AccountDeleteConfirm(confirmation="deletemyaccount")
+        result = await delete_account(confirm, user)
 
         assert result["detail"] == "Account deleted"
         sb.rpc.assert_called_once_with("delete_user_account", {"target_user_id": "user-to-delete"})
@@ -912,7 +913,7 @@ class TestAccountDeletion:
     @patch("app.routes.settings.get_supabase")
     @pytest.mark.asyncio
     async def test_delete_rpc_failure_raises(self, mock_get_sb):
-        from app.routes.settings import delete_account
+        from app.routes.settings import delete_account, AccountDeleteConfirm
         from fastapi import HTTPException
 
         sb = MagicMock()
@@ -920,8 +921,9 @@ class TestAccountDeletion:
         mock_get_sb.return_value = sb
 
         user = {"id": "user-1", "email": "test@test.com"}
+        confirm = AccountDeleteConfirm(confirmation="deletemyaccount")
         with pytest.raises(HTTPException) as exc_info:
-            await delete_account(user)
+            await delete_account(confirm, user)
         assert exc_info.value.status_code == 500
 
 

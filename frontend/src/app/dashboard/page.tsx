@@ -127,6 +127,11 @@ export default function Dashboard() {
   const [eduStartDate, setEduStartDate] = useState("");
   const [eduEndDate, setEduEndDate] = useState("");
 
+  // Platform preferences
+  const [prefs, setPrefs] = useState<{ open_to_work: boolean; resume_url: string | null; resume_visible: boolean; preferred_functions: string[] } | null>(null);
+  const [jobFunctions, setJobFunctions] = useState<{ id: string; name: string; slug: string; category: string }[]>([]);
+  const [uploadingResume, setUploadingResume] = useState(false);
+
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -158,6 +163,8 @@ export default function Dashboard() {
     }
     try { setEmployment(await api.getEmploymentClaims(accessToken)); } catch { /* empty */ }
     try { setEducation(await api.getEducationClaims(accessToken)); } catch { /* empty */ }
+    try { setPrefs(await api.getCandidatePreferences(accessToken)); } catch { /* empty */ }
+    try { setJobFunctions(await api.getJobFunctions()); } catch { /* empty */ }
     setLoading(false);
   }, []);
 
@@ -289,6 +296,11 @@ export default function Dashboard() {
     try { await api.resendEmploymentVerification(token, id); addToast("Verification request resent!"); } catch { /* empty */ }
   };
 
+  const handleResendEdu = async (id: string) => {
+    if (!token) return;
+    try { await api.resendEducationVerification(token, id); addToast("Verification request resent!"); } catch { /* empty */ }
+  };
+
   const handleInvite = async (name: string, domain: string) => {
     if (!token) return;
     setInviteCompany({ name, domain });
@@ -403,6 +415,126 @@ export default function Dashboard() {
                     </button>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Platform preferences — resume, job interests, discoverability */}
+        {profile && prefs && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-10 animate-fade-in">
+            <h2 className="text-sm font-bold text-gray-900 mb-5">Platform preferences</h2>
+            <div className="grid sm:grid-cols-3 gap-6">
+              {/* Resume */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Resume</p>
+                {prefs.resume_url ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-700 flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                      Uploaded
+                    </span>
+                    <label className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer">
+                      Replace
+                      <input type="file" accept="application/pdf" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !token) return;
+                        setUploadingResume(true);
+                        try {
+                          const result = await api.uploadResume(token, file);
+                          setPrefs(p => p ? { ...p, resume_url: result.resume_url } : p);
+                          addToast("Resume updated");
+                        } catch (err: unknown) { addToast((err as Error).message, "error"); }
+                        setUploadingResume(false);
+                      }} />
+                    </label>
+                  </div>
+                ) : (
+                  <label className={`inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer ${uploadingResume ? "opacity-50" : ""}`}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
+                    {uploadingResume ? "Uploading..." : "Upload PDF"}
+                    <input type="file" accept="application/pdf" className="hidden" disabled={uploadingResume} onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !token) return;
+                      setUploadingResume(true);
+                      try {
+                        const result = await api.uploadResume(token, file);
+                        setPrefs(p => p ? { ...p, resume_url: result.resume_url } : p);
+                        addToast("Resume uploaded");
+                      } catch (err: unknown) { addToast((err as Error).message, "error"); }
+                      setUploadingResume(false);
+                    }} />
+                  </label>
+                )}
+                {prefs.resume_url && (
+                  <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={prefs.resume_visible}
+                      onChange={async (e) => {
+                        if (!token) return;
+                        const val = e.target.checked;
+                        setPrefs(p => p ? { ...p, resume_visible: val } : p);
+                        try { await api.updateCandidatePreferences(token, { resume_visible: val }); } catch { /* empty */ }
+                      }}
+                      className="rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="text-xs text-gray-500">Visible to employers</span>
+                  </label>
+                )}
+              </div>
+
+              {/* Job interests */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Job interests</p>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                  {jobFunctions.length > 0 && jobFunctions.map(fn => {
+                    const selected = prefs.preferred_functions?.includes(fn.id);
+                    return (
+                      <button
+                        key={fn.id}
+                        onClick={async () => {
+                          if (!token) return;
+                          const updated = selected
+                            ? prefs.preferred_functions.filter((id: string) => id !== fn.id)
+                            : [...(prefs.preferred_functions || []), fn.id];
+                          setPrefs(p => p ? { ...p, preferred_functions: updated } : p);
+                          try { await api.updateCandidatePreferences(token, { preferred_functions: updated }); } catch { /* empty */ }
+                        }}
+                        className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${selected ? "bg-blue-100 text-blue-700" : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600"}`}
+                      >
+                        {fn.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-gray-300 mt-1.5">Powers "Most Relevant" sort in jobs feed</p>
+              </div>
+
+              {/* Open to work */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Discoverability</p>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={prefs.open_to_work}
+                      onChange={async (e) => {
+                        if (!token) return;
+                        const val = e.target.checked;
+                        setPrefs(p => p ? { ...p, open_to_work: val } : p);
+                        try { await api.updateCandidatePreferences(token, { open_to_work: val }); } catch { /* empty */ }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-gray-200 peer-checked:bg-emerald-500 rounded-full transition-colors" />
+                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Open to work</span>
+                    <p className="text-[10px] text-gray-400">Employers can find you in search. Never shown on your public profile.</p>
+                  </div>
+                </label>
               </div>
             </div>
           </div>
@@ -523,6 +655,7 @@ export default function Dashboard() {
                     onDelete={handleDeleteEdu}
                     onAcceptCorrection={handleAcceptEduCorrection}
                     onDenyCorrection={handleDenyEduCorrection}
+                    onResend={handleResendEdu}
                     onInvite={handleInvite}
                   />
                 ))}

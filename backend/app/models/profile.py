@@ -16,6 +16,7 @@ class ProfileUpdate(BaseModel):
     headline: Optional[str] = None
     location: Optional[str] = None
     avatar_url: Optional[str] = None
+    notification_preferences: Optional[dict] = None
 
 
 class ProfileResponse(BaseModel):
@@ -25,5 +26,5 @@ class ProfileResponse(BaseModel):
     headline: Optional[str] = None
     location: Optional[str] = None
     avatar_url: Optional[str] = None
+    notification_preferences: Optional[dict] = None
     created_at: Optional[datetime] = None
-    # trust_score removed — computed as "X of Y verified" on the fly

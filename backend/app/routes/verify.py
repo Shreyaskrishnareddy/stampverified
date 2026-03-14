@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.claims import CorrectAndVerifyAction, DisputeAction
 from app.config import get_supabase
 from app.services.notifications import notify_user
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/api/verify", tags=["verification"])
 
@@ -104,8 +104,9 @@ async def verify_claim_by_token(token: str):
     supabase = get_supabase()
     supabase.table(table_name).update({
         "status": "verified",
-        "verified_at": datetime.utcnow().isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
         "verified_by_org": org["name"],
+        "verification_token": None,
     }).eq("id", claim["id"]).execute()
 
     notify_user(
@@ -157,6 +158,7 @@ async def correct_claim_by_token(
         if correction.corrected_end_date:
             update_data["corrected_end_date"] = correction.corrected_end_date.isoformat()
 
+    update_data["verification_token"] = None
     supabase.table(table_name).update(update_data).eq("id", claim["id"]).execute()
 
     notify_user(
@@ -194,6 +196,7 @@ async def dispute_claim_by_token(
             "status": "permanently_locked",
             "disputed_reason": dispute.reason,
             "dispute_count": new_dispute_count,
+            "verification_token": None,
         }).eq("id", claim["id"]).execute()
 
         notify_user(
@@ -211,6 +214,7 @@ async def dispute_claim_by_token(
         "status": "disputed",
         "disputed_reason": dispute.reason,
         "dispute_count": new_dispute_count,
+        "verification_token": None,
     }).eq("id", claim["id"]).execute()
 
     notify_user(

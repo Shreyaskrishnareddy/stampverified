@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional
 from datetime import date, datetime
 
@@ -19,6 +19,25 @@ class EmploymentClaimCreate(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     is_current: bool = False
+
+    @field_validator("start_date")
+    @classmethod
+    def start_date_not_in_future(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("Start date cannot be in the future")
+        if v.year < 1950:
+            raise ValueError("Start date is unreasonably old")
+        return v
+
+    @model_validator(mode="after")
+    def end_date_after_start(self):
+        if self.end_date and self.start_date and self.end_date < self.start_date:
+            raise ValueError("End date must be after start date")
+        if self.end_date and self.end_date > date.today():
+            raise ValueError("End date cannot be in the future")
+        if self.is_current and self.end_date:
+            raise ValueError("Current position cannot have an end date")
+        return self
 
 
 class EmploymentClaimUpdate(BaseModel):
@@ -78,6 +97,14 @@ class EducationClaimCreate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
 
+    @model_validator(mode="after")
+    def validate_dates(self):
+        if self.start_date and self.start_date.year < 1950:
+            raise ValueError("Start date is unreasonably old")
+        if self.end_date and self.start_date and self.end_date < self.start_date:
+            raise ValueError("End date must be after start date")
+        return self
+
 
 class EducationClaimUpdate(BaseModel):
     institution: Optional[str] = None
@@ -129,14 +156,17 @@ class VerifyAction(BaseModel):
 
 
 class CorrectAndVerifyAction(BaseModel):
-    """Org admin proposes corrections. Sent back to user for acceptance."""
-    # Employment corrections
+    """Org admin proposes corrections. Sent back to user for acceptance.
+
+    Shared model for both employment and education corrections.
+    Date fields are shared (both claim types have start_date/end_date).
+    """
+    # Employment-specific corrections
     corrected_title: Optional[str] = None
-    corrected_start_date: Optional[date] = None
-    corrected_end_date: Optional[date] = None
-    # Education corrections
+    # Education-specific corrections
     corrected_degree: Optional[str] = None
     corrected_field: Optional[str] = None
+    # Shared date corrections (both employment and education use these)
     corrected_start_date: Optional[date] = None
     corrected_end_date: Optional[date] = None
     # Reason for correction

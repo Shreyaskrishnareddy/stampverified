@@ -19,6 +19,7 @@ class OrganizationUpdate(BaseModel):
     verifier_name: Optional[str] = None
     verifier_email: Optional[str] = None
     logo_url: Optional[str] = None
+    website_url: Optional[str] = None
 
 
 class OrganizationResponse(BaseModel):
@@ -30,6 +31,7 @@ class OrganizationResponse(BaseModel):
     verifier_name: Optional[str] = None
     verifier_email: str
     logo_url: Optional[str] = None
+    website_url: Optional[str] = None
     is_domain_verified: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -42,4 +44,5 @@ class OrganizationPublic(BaseModel):
     domain: str
     org_type: str
     logo_url: Optional[str] = None
+    website_url: Optional[str] = None
     is_domain_verified: bool = False

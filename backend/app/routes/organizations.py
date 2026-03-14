@@ -1,14 +1,18 @@
 import re
+import secrets
+import socket
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from app.middleware.auth import get_current_user, get_current_org_admin
+from app.middleware.auth import get_current_user, get_current_company_member, require_admin
 from app.services.storage import upload_org_logo
+from app.services.email import send_verification_email
 from app.models.organization import (
     OrganizationCreate,
     OrganizationUpdate,
     OrganizationResponse,
     OrganizationPublic,
 )
-from app.config import get_supabase
+from app.config import get_supabase, get_settings
 from app.services.notifications import notify_user, notify_org_admin
 
 router = APIRouter(prefix="/api/organizations", tags=["organizations"])
@@ -116,6 +120,23 @@ async def register_organization(
             detail="An organization with this domain is already registered"
         )
 
+    # Validate the domain looks legitimate (has DNS records)
+    try:
+        socket.getaddrinfo(domain, None)
+    except socket.gaierror:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Domain '{domain}' does not appear to be a real domain. Please use a registered company domain."
+        )
+
+    # Registrant's email domain must match the org domain
+    registrant_domain = user["email"].rsplit("@", 1)[-1].lower() if "@" in user["email"] else ""
+    if registrant_domain != domain:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Your email domain ({registrant_domain}) must match the organization domain ({domain})"
+        )
+
     # Verifier email is required and must be role-based
     verifier_email = (org.verifier_email or "").strip().lower()
     if not verifier_email:
@@ -136,10 +157,27 @@ async def register_organization(
         "verifier_name": org.verifier_name,
         "verifier_email": verifier_email,
         "logo_url": org.logo_url,
+        "website_url": f"https://{domain}",
     }
 
     result = supabase.table("organizations").insert(data).execute()
     new_org = result.data[0]
+
+    # Create the founding company_member with admin role and all permissions
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        supabase.table("company_members").insert({
+            "organization_id": new_org["id"],
+            "user_id": user["id"],
+            "email": user["email"],
+            "role": "admin",
+            "can_post_jobs": True,
+            "can_verify_claims": True,
+            "status": "active",
+            "joined_at": now,
+        }).execute()
+    except Exception as e:
+        print(f"[ORG] Warning: Failed to create company_member for founding admin: {e}")
 
     # Auto-surface any existing claims that were awaiting this org
     _link_pending_claims(domain, new_org["id"], new_org["name"], user["email"])
@@ -149,22 +187,33 @@ async def register_organization(
 
 def _link_pending_claims(domain: str, org_id: str, org_name: str, admin_email: str):
     """When an org registers, find all 'awaiting_org' claims that match
-    this domain and link them to the new org."""
+    this domain, link them, generate verification tokens, and send
+    verification emails to the org's verifier."""
     supabase = get_supabase()
+    settings = get_settings()
+    frontend_url = settings.frontend_url
+
+    # Get org details for the verifier email
+    org_result = supabase.table("organizations").select("*").eq("id", org_id).execute()
+    org = org_result.data[0] if org_result.data else None
 
     # Match employment claims by company_domain
     emp_claims = (
         supabase.table("employment_claims")
-        .select("id,user_id")
+        .select("id,user_id,company_name,title,start_date,end_date,is_current")
         .eq("company_domain", domain)
         .eq("status", "awaiting_org")
         .execute()
     )
     if emp_claims.data:
         for claim in emp_claims.data:
+            # Generate a verification token for this claim
+            new_token = secrets.token_urlsafe(32)
+
             supabase.table("employment_claims").update({
                 "organization_id": org_id,
                 "status": "awaiting_verification",
+                "verification_token": new_token,
             }).eq("id", claim["id"]).execute()
 
             # Notify the user that their company has joined
@@ -177,19 +226,47 @@ def _link_pending_claims(domain: str, org_id: str, org_name: str, admin_email: s
                 claim_table="employment_claims",
             )
 
+            # Send verification email to the org's verifier
+            if org:
+                profile = supabase.table("profiles").select("full_name").eq("id", claim["user_id"]).execute()
+                claimer_name = profile.data[0]["full_name"] if profile.data else "Someone"
+
+                period = str(claim.get("start_date", ""))
+                if claim.get("is_current"):
+                    period += " to Present"
+                elif claim.get("end_date"):
+                    period += f" to {claim['end_date']}"
+
+                claim_details = f"{claim['title']} at {claim['company_name']} ({period})"
+                verification_url = f"{frontend_url}/verify/{new_token}"
+
+                try:
+                    send_verification_email(
+                        to_email=org["verifier_email"],
+                        claimer_name=claimer_name,
+                        claim_type="employment",
+                        claim_details=claim_details,
+                        verification_url=verification_url,
+                    )
+                except Exception as e:
+                    print(f"[ORG] Warning: Failed to send verification email for claim {claim['id']}: {e}")
+
     # Match education claims by institution_domain
     edu_claims = (
         supabase.table("education_claims")
-        .select("id,user_id")
+        .select("id,user_id,institution,degree,field_of_study,end_date")
         .eq("institution_domain", domain)
         .eq("status", "awaiting_org")
         .execute()
     )
     if edu_claims.data:
         for claim in edu_claims.data:
+            new_token = secrets.token_urlsafe(32)
+
             supabase.table("education_claims").update({
                 "organization_id": org_id,
                 "status": "awaiting_verification",
+                "verification_token": new_token,
             }).eq("id", claim["id"]).execute()
 
             notify_user(
@@ -200,6 +277,27 @@ def _link_pending_claims(domain: str, org_id: str, org_name: str, admin_email: s
                 claim_id=claim["id"],
                 claim_table="education_claims",
             )
+
+            # Send verification email to the org's verifier
+            if org:
+                profile = supabase.table("profiles").select("full_name").eq("id", claim["user_id"]).execute()
+                claimer_name = profile.data[0]["full_name"] if profile.data else "Someone"
+
+                claim_details = f"{claim['degree']} from {claim['institution']}"
+                if claim.get("field_of_study"):
+                    claim_details += f" ({claim['field_of_study']})"
+                verification_url = f"{frontend_url}/verify/{new_token}"
+
+                try:
+                    send_verification_email(
+                        to_email=org["verifier_email"],
+                        claimer_name=claimer_name,
+                        claim_type="education",
+                        claim_details=claim_details,
+                        verification_url=verification_url,
+                    )
+                except Exception as e:
+                    print(f"[ORG] Warning: Failed to send verification email for claim {claim['id']}: {e}")
 
     # Notify the org admin about pending claims
     total_pending = len(emp_claims.data or []) + len(edu_claims.data or [])
@@ -213,17 +311,25 @@ def _link_pending_claims(domain: str, org_id: str, org_name: str, admin_email: s
 
 
 @router.get("/mine", response_model=OrganizationResponse)
-async def get_my_organization(user: dict = Depends(get_current_org_admin)):
-    """Get the org that the current admin manages."""
+async def get_my_organization(user: dict = Depends(get_current_company_member)):
+    """Get the org that the current member belongs to.
+
+    Any active member can view org details.
+    """
     return user["org"]
 
 
 @router.put("/mine", response_model=OrganizationResponse)
 async def update_my_organization(
     updates: OrganizationUpdate,
-    user: dict = Depends(get_current_org_admin),
+    user: dict = Depends(get_current_company_member),
 ):
-    """Update org details (name, verifier contact, logo)."""
+    """Update org details (name, verifier contact, logo).
+
+    Admin only.
+    """
+    require_admin(user["member"])
+
     supabase = get_supabase()
     org = user["org"]
 
@@ -247,9 +353,14 @@ async def update_my_organization(
 @router.post("/mine/logo")
 async def upload_logo(
     file: UploadFile = File(...),
-    user: dict = Depends(get_current_org_admin),
+    user: dict = Depends(get_current_company_member),
 ):
-    """Upload organization logo to Supabase Storage."""
+    """Upload organization logo to Supabase Storage.
+
+    Admin only.
+    """
+    require_admin(user["member"])
+
     org = user["org"]
     logo_url = await upload_org_logo(org["id"], file)
     return {"logo_url": logo_url}

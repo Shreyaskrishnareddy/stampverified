@@ -57,7 +57,7 @@ export default function CompanyAutocomplete({ value, domain, onChange, placehold
         combined.push({
           name: org.name,
           domain: org.domain,
-          logo: org.logo_url || `https://logo.clearbit.com/${org.domain}`,
+          logo: org.logo_url || `https://www.google.com/s2/favicons?sz=128&domain=${org.domain}`,
           onStamp: true,
           orgId: org.id,
         });
@@ -69,7 +69,7 @@ export default function CompanyAutocomplete({ value, domain, onChange, placehold
           combined.push({
             name: c.name,
             domain: c.domain,
-            logo: c.logo || `https://logo.clearbit.com/${c.domain}`,
+            logo: c.logo || `https://www.google.com/s2/favicons?sz=128&domain=${c.domain}`,
             onStamp: false,
           });
         }

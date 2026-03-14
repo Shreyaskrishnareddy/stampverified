@@ -29,8 +29,9 @@ async def upload_file(bucket: str, file_path: str, file: UploadFile) -> str:
     Returns:
         Public URL of the uploaded file
     """
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
+    ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if not file.content_type or file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=400, detail="File must be a JPEG, PNG, WebP, or GIF image")
 
     if file.size and file.size > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File must be under 5MB")

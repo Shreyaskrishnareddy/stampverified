@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import Link from "next/link";
 
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -23,72 +24,19 @@ function Section({ children, className = "" }: { children: React.ReactNode; clas
   return <div ref={ref} className={`${visible ? "animate-fade-up" : "opacity-0"} ${className}`}>{children}</div>;
 }
 
-const BlueTick = ({ className = "w-4.5 h-4.5" }: { className?: string }) => (
-  <svg className={`${className} text-blue-600`} viewBox="0 0 24 24" fill="currentColor">
+const BlueTick = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="#3B82F6">
     <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
   </svg>
 );
 
-function HeroCard() {
-  return (
-    <div className="animate-fade-up delay-500 mt-16 relative max-w-xl mx-auto">
-      <div className="absolute -inset-4 bg-gradient-to-r from-blue-100/40 via-blue-50/30 to-blue-100/40 rounded-[2rem] blur-2xl opacity-60" />
-      <div className="relative bg-white rounded-2xl shadow-2xl shadow-gray-300/30 overflow-hidden border border-gray-100">
-        <div className="p-6 sm:p-8">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-600/30">S</div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h3 className="font-bold text-gray-900">Sarah Martinez</h3>
-                  <BlueTick className="w-5 h-5" />
-                </div>
-                <p className="text-sm text-gray-500">Product Lead at Notion</p>
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-sm font-bold text-gray-900">2 of 3</p>
-              <p className="text-[11px] text-gray-400">verified</p>
-            </div>
-          </div>
+const GoldTick = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="#D97706">
+    <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+  </svg>
+);
 
-          <div className="space-y-2.5">
-            {[
-              { title: "Product Lead", co: "Notion", date: "2022 — Present", verified: true },
-              { title: "Sr. Product Manager", co: "Stripe", date: "2019 — 2022", verified: true },
-              { title: "MBA, Business", co: "Stanford GSB", date: "Class of 2019", verified: false },
-            ].map((item, i) => (
-              <div key={i} className={`flex items-center gap-3.5 p-3.5 rounded-xl border transition-all ${item.verified ? "bg-blue-50/40 border-blue-100" : "bg-gray-50/50 border-gray-100"}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${item.verified ? "bg-white text-blue-600 border border-blue-200 shadow-sm" : "bg-white text-gray-400 border border-gray-200"}`}>
-                  {item.co.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{item.title}</p>
-                  <p className="text-xs text-gray-500">{item.co} &middot; {item.date}</p>
-                </div>
-                {item.verified ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                    <BlueTick className="w-3 h-3" />
-                    Verified
-                  </span>
-                ) : (
-                  <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Under Review
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 pt-4 border-t border-gray-100">
-            <p className="text-[11px] text-gray-400 font-mono">stampverified.com/sarah</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// ─── Auth Modal (unchanged) ────────────────────────────────────────────────
 
 function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; onClose: () => void; defaultMode?: "signin" | "signup" }) {
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">(defaultMode);
@@ -117,16 +65,11 @@ function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; o
     setError(""); setMessage(""); setLoading(true);
     try {
       if (mode === "forgot") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        });
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/callback` });
         if (error) throw error;
         setMessage("Password reset link sent! Check your email.");
       } else if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-        });
+        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
         if (error) throw error;
         setMessage("Check your email to confirm your account.");
       } else {
@@ -134,10 +77,7 @@ function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; o
         if (error) throw error;
         router.push("/dashboard");
       }
-    } catch (err: unknown) {
-      const e = err as Error;
-      setError(e.message);
-    }
+    } catch (err: unknown) { setError((err as Error).message); }
     setLoading(false);
   };
 
@@ -157,63 +97,41 @@ function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; o
             </p>
           </div>
         </div>
-
         {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">{error}</div>}
         {message && <div className="bg-blue-50 text-blue-700 text-sm px-4 py-3 rounded-xl mb-4 border border-blue-100">{message}</div>}
-
         {mode !== "forgot" && (
           <>
             <button onClick={handleGoogle} className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors mb-4 shadow-sm">
               <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
               Continue with Google
             </button>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs font-medium text-gray-400">or</span>
-              <div className="flex-1 h-px bg-gray-200" />
-            </div>
+            <div className="flex items-center gap-3 mb-4"><div className="flex-1 h-px bg-gray-200" /><span className="text-xs font-medium text-gray-400">or</span><div className="flex-1 h-px bg-gray-200" /></div>
           </>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400" />
-          </div>
-          {mode !== "forgot" && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} placeholder="Min 8 characters" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400" />
-            </div>
-          )}
+          <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div>
+          {mode !== "forgot" && <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} placeholder="Min 8 characters" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div>}
           <button type="submit" disabled={loading} className="w-full bg-[#0A0A0A] text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50">
             {loading ? "Please wait..." : mode === "forgot" ? "Send reset link" : mode === "signup" ? "Create account" : "Sign in"}
           </button>
         </form>
-
         <div className="mt-4 text-center space-y-2">
-          {mode === "signin" && (
-            <>
-              <button onClick={() => { setMode("forgot"); setError(""); setMessage(""); }} className="text-sm text-gray-400 hover:text-blue-600 transition-colors">Forgot password?</button>
-              <p className="text-sm text-gray-400">Don&apos;t have an account? <button onClick={() => { setMode("signup"); setError(""); setMessage(""); }} className="font-semibold text-gray-700 hover:text-blue-600 transition-colors">Sign up</button></p>
-            </>
-          )}
-          {mode === "signup" && (
-            <p className="text-sm text-gray-400">Already have an account? <button onClick={() => { setMode("signin"); setError(""); setMessage(""); }} className="font-semibold text-gray-700 hover:text-blue-600 transition-colors">Sign in</button></p>
-          )}
-          {mode === "forgot" && (
-            <button onClick={() => { setMode("signin"); setError(""); setMessage(""); }} className="text-sm font-semibold text-gray-700 hover:text-blue-600 transition-colors">Back to sign in</button>
-          )}
+          {mode === "signin" && (<><button onClick={() => { setMode("forgot"); setError(""); setMessage(""); }} className="text-sm text-gray-400 hover:text-blue-600 transition-colors">Forgot password?</button><p className="text-sm text-gray-400">Don&apos;t have an account? <button onClick={() => { setMode("signup"); setError(""); setMessage(""); }} className="font-semibold text-gray-700 hover:text-blue-600">Sign up</button></p></>)}
+          {mode === "signup" && <p className="text-sm text-gray-400">Already have an account? <button onClick={() => { setMode("signin"); setError(""); setMessage(""); }} className="font-semibold text-gray-700 hover:text-blue-600">Sign in</button></p>}
+          {mode === "forgot" && <button onClick={() => { setMode("signin"); setError(""); setMessage(""); }} className="text-sm font-semibold text-gray-700 hover:text-blue-600">Back to sign in</button>}
         </div>
       </div>
     </div>
   );
 }
 
+// ─── Landing Page ──────────────────────────────────────────────────────────
+
 function LandingContent() {
   const searchParams = useSearchParams();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [heroMode, setHeroMode] = useState<"candidate" | "employer">("candidate");
 
   useEffect(() => {
     const auth = searchParams.get("auth");
@@ -222,6 +140,23 @@ function LandingContent() {
   }, [searchParams]);
 
   const openSignUp = () => { setAuthMode("signup"); setAuthOpen(true); };
+
+  const heroContent = {
+    candidate: {
+      headline: <>Every claim on your profile{" "}<br className="hidden sm:block" />is confirmed by the source.</>,
+      subtext: "Add your job or degree. The employer confirms it. A badge appears. Share your profile anywhere.",
+      cta: "Get Verified — Free",
+      ctaAction: openSignUp,
+    },
+    employer: {
+      headline: <>Hire from a pool where{" "}<br className="hidden sm:block" />every resume is real.</>,
+      subtext: "Post jobs. Search candidates with confirmed backgrounds. No fake resumes. No background check needed.",
+      cta: "Start Hiring — Free",
+      ctaAction: () => window.location.href = "/for-employers/register",
+    },
+  };
+
+  const content = heroContent[heroMode];
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
@@ -235,121 +170,65 @@ function LandingContent() {
         </div>
 
         <div className="max-w-5xl mx-auto px-6 text-center">
-          <div className="animate-fade-up inline-flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-2 text-[13px] font-semibold text-gray-600 shadow-sm mb-10">
-            <span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-blue-600" /></span>
-            The verified career platform
+          {/* Toggle */}
+          <div className="animate-fade-up inline-flex items-center bg-gray-100 rounded-full p-1 mb-10">
+            <button
+              onClick={() => setHeroMode("candidate")}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${heroMode === "candidate" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              I&apos;m looking for work
+            </button>
+            <button
+              onClick={() => setHeroMode("employer")}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${heroMode === "employer" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              I&apos;m hiring
+            </button>
           </div>
 
-          <h1 className="animate-fade-up delay-100 text-[clamp(3rem,8vw,5.5rem)] font-extrabold leading-[1.05] tracking-[-0.03em]">
-            <span className="text-gray-900">Anyone can claim it.</span>
-            <br />
-            <span className="text-blue-600">Stamp verifies it.</span>
+          <h1 className="animate-fade-up delay-100 text-[clamp(2.5rem,7vw,4.5rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-gray-900">
+            {content.headline}
           </h1>
 
           <p className="animate-fade-up delay-200 mt-7 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed font-medium">
-            Add your job or degree. We send one email to the source.
-            <br className="hidden sm:block" />
-            They confirm it. A verified badge appears on your profile.
-          </p>
-          <p className="animate-fade-up delay-250 mt-3 text-sm text-gray-400">
-            Each verification confirms what was true at the time it was checked.
+            {content.subtext}
           </p>
 
           <div className="animate-fade-up delay-300 mt-10">
-            <button onClick={openSignUp} className="group relative inline-flex items-center gap-3 bg-[#0A0A0A] text-white px-7 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all duration-300 shadow-2xl shadow-gray-900/25 hover:-translate-y-0.5">
-              Start for free
+            <button onClick={content.ctaAction} className="group relative inline-flex items-center gap-3 bg-[#0A0A0A] text-white px-7 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all duration-300 shadow-2xl shadow-gray-900/25 hover:-translate-y-0.5">
+              {content.cta}
               <svg className="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
             </button>
           </div>
-          <p className="animate-fade-up delay-400 mt-5 text-sm text-gray-400 font-medium">No credit card. No setup. Takes 30 seconds.</p>
+          <p className="animate-fade-up delay-400 mt-5 text-sm text-gray-400 font-medium">Free for everyone. No credit card. No setup.</p>
 
-          <HeroCard />
-        </div>
-      </section>
-
-      {/* ─── HOW IT WORKS ─── */}
-      <section className="py-32 px-6 relative">
-        <div className="max-w-5xl mx-auto relative">
-          <Section>
-            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">How it works</p>
-            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight">Three steps.<br />Zero guesswork.</h2>
-          </Section>
-
-          <div className="mt-20 grid md:grid-cols-3 gap-6">
-            {[
-              { n: "1", title: "Claim it", desc: "Add your job title, company, degree, or institution. Select from our database. Takes 30 seconds.", icon: "M12 4.5v15m7.5-7.5h-15" },
-              { n: "2", title: "We verify it", desc: "Your employer or university gets a secure email. They confirm, correct, or dispute — no account or login needed.", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
-              { n: "3", title: "Badge appears", desc: "A verified badge on your profile, confirmed at the source. Share your link anywhere.", icon: "M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" },
-            ].map((step) => (
-              <Section key={step.n}>
-                <div className="group relative bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full">
-                  <div className="w-12 h-12 rounded-full bg-[#0A0A0A] flex items-center justify-center text-white text-sm font-extrabold mb-6 group-hover:scale-110 transition-transform">
-                    {step.n}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{step.title}</h3>
-                  <p className="text-[15px] text-gray-500 leading-relaxed">{step.desc}</p>
-                  <div className="mt-6 w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={step.icon} /></svg>
-                  </div>
-                </div>
-              </Section>
-            ))}
+          {/* Quick links */}
+          <div className="animate-fade-up delay-500 mt-8 flex items-center justify-center gap-6">
+            <Link href="/jobs" className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors">Browse Jobs</Link>
+            <Link href="/companies" className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors">Browse Companies</Link>
           </div>
         </div>
       </section>
 
-      {/* ─── STATS ─── */}
-      <section className="relative py-32 px-6 bg-[#0A0A0A] text-white overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-500/8 rounded-full blur-[150px]" />
-        <div className="max-w-5xl mx-auto relative z-10">
-          <Section>
-            <div className="text-center mb-20">
-              <p className="text-sm font-bold text-blue-400 uppercase tracking-widest mb-4">Why this matters</p>
-              <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight">Professional profiles<br />are fundamentally broken.</h2>
-              <p className="mt-6 text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">Self-reported claims. Zero accountability. Background checks that cost a fortune and take days. We built the fix.</p>
-            </div>
-          </Section>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-0">
-            {[
-              { value: "78%", label: "of resumes contain misleading claims according to hiring managers" },
-              { value: "$100+", label: "Traditional background checks are expensive and slow" },
-              { value: "Days", label: "Candidates wait days or weeks for outdated background checks" },
-              { value: "1 Click", label: "Stamp verification takes one click. Free for everyone." },
-            ].map((stat, i) => (
-              <Section key={i}>
-                <div className={`p-8 h-full ${i < 3 ? "lg:border-r border-white/[.06]" : ""} text-center lg:text-left`}>
-                  <p className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent leading-tight">{stat.value}</p>
-                  <p className="mt-4 text-sm text-gray-400 leading-relaxed">{stat.label}</p>
-                </div>
-              </Section>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── FOR EMPLOYERS ─── */}
-      <section className="py-32 px-6 bg-gray-50 relative">
+      {/* ─── TRUST BADGES ─── */}
+      <section className="py-24 px-6 relative">
         <div className="max-w-5xl mx-auto">
           <Section>
-            <div className="text-center mb-16">
-              <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">For Employers</p>
-              <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">Verify your team.<br />Build employer trust.</h2>
-              <p className="mt-6 text-lg text-gray-500 max-w-2xl mx-auto">Register your organization on Stamp. Verify employee claims in seconds. Show candidates your company takes authenticity seriously.</p>
-            </div>
+            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4 text-center">The trust difference</p>
+            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight text-center">
+              Confirmed candidates.{" "}<br className="hidden sm:block" />Real companies. Real jobs.
+            </h2>
           </Section>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="mt-16 grid md:grid-cols-3 gap-6">
             {[
-              { title: "Register your org", desc: "Sign up with your work email. Add your company details. Takes 2 minutes.", icon: "M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" },
-              { title: "Review claims", desc: "See pending verification requests from employees who listed your company. Verify, correct, or dispute.", icon: "M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" },
-              { title: "Build trust", desc: "Verified employees carry your company's stamp. Strengthen your employer brand.", icon: "M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" },
+              { icon: <BlueTick className="w-8 h-8" />, title: "Confirmed Candidates", desc: "Every claim on a candidate's profile is checked by the source employer or university. Not self-reported." },
+              { icon: <BlueTick className="w-8 h-8" />, title: "Real Companies", desc: "Every company on Stamp is domain-verified with a real team behind it. No ghost companies, no scams." },
+              { icon: <GoldTick className="w-8 h-8" />, title: "Real Hiring Teams", desc: "Every recruiter is an approved member of a real company. You always know who you're talking to." },
             ].map((item) => (
               <Section key={item.title}>
-                <div className="bg-white rounded-2xl p-8 border border-gray-200 h-full">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg>
-                  </div>
+                <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 transition-all h-full">
+                  <div className="mb-5">{item.icon}</div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
                   <p className="text-[15px] text-gray-500 leading-relaxed">{item.desc}</p>
                 </div>
@@ -359,46 +238,105 @@ function LandingContent() {
         </div>
       </section>
 
+      {/* ─── HOW IT WORKS — CANDIDATES ─── */}
+      <section className="py-24 px-6 bg-gray-50">
+        <div className="max-w-5xl mx-auto">
+          <Section>
+            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">For Candidates</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">Get confirmed. Get found. Get hired.</h2>
+          </Section>
+          <div className="mt-12 grid md:grid-cols-3 gap-6">
+            {[
+              { n: "1", title: "Get confirmed", desc: "Add your work and education history. Your employer or university confirms it with one click." },
+              { n: "2", title: "Browse real jobs", desc: "Every job on Stamp is from a real company with a real hiring team. No scams, no ghost postings." },
+              { n: "3", title: "Apply with proof", desc: "Your confirmed profile replaces the resume cover letter cycle. Employers see the proof up front." },
+            ].map(step => (
+              <Section key={step.n}>
+                <div className="bg-white rounded-2xl p-7 border border-gray-200 h-full">
+                  <div className="w-10 h-10 rounded-full bg-[#0A0A0A] flex items-center justify-center text-white text-sm font-extrabold mb-5">{step.n}</div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{step.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
+                </div>
+              </Section>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── HOW IT WORKS — EMPLOYERS ─── */}
+      <section className="py-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <Section>
+            <p className="text-sm font-bold text-amber-600 uppercase tracking-widest mb-4">For Employers</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">Post jobs. Find talent. Skip the noise.</h2>
+          </Section>
+          <div className="mt-12 grid md:grid-cols-3 gap-6">
+            {[
+              { n: "1", title: "Register your company", desc: "Verify your domain. Invite your hiring team. Takes 2 minutes. Free to start." },
+              { n: "2", title: "Post and paste", desc: "Paste your job description. We extract the details. Review and publish in under 60 seconds." },
+              { n: "3", title: "Hire with confidence", desc: "Every applicant has a confirmed background. Search talent directly. No background check needed." },
+            ].map(step => (
+              <Section key={step.n}>
+                <div className="bg-white rounded-2xl p-7 border border-gray-200 h-full">
+                  <div className="w-10 h-10 rounded-full bg-amber-600 flex items-center justify-center text-white text-sm font-extrabold mb-5">{step.n}</div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{step.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
+                </div>
+              </Section>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── STATS ─── */}
+      <section className="relative py-24 px-6 bg-[#0A0A0A] text-white overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-500/8 rounded-full blur-[150px]" />
+        <div className="max-w-5xl mx-auto relative z-10">
+          <Section>
+            <div className="text-center mb-16">
+              <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight">The hiring problem is trust.</h2>
+              <p className="mt-6 text-lg text-gray-400 max-w-2xl mx-auto">Resumes are self-reported. Background checks are slow and expensive. Both sides lose. Stamp fixes it.</p>
+            </div>
+          </Section>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-0">
+            {[
+              { value: "78%", label: "of resumes contain misleading claims" },
+              { value: "$100+", label: "per traditional background check" },
+              { value: "Days", label: "wasted waiting for outdated checks" },
+              { value: "$0", label: "Stamp is free for both sides" },
+            ].map((stat, i) => (
+              <Section key={i}>
+                <div className={`p-8 h-full ${i < 3 ? "lg:border-r border-white/[.06]" : ""} text-center lg:text-left`}>
+                  <p className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">{stat.value}</p>
+                  <p className="mt-4 text-sm text-gray-400 leading-relaxed">{stat.label}</p>
+                </div>
+              </Section>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── FAQ ─── */}
-      <section className="py-32 px-6 relative">
+      <section className="py-24 px-6">
         <div className="max-w-3xl mx-auto">
           <Section>
-            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4 text-center">Common questions</p>
-            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight text-center mb-16">How Stamp works</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 text-center mb-12">Common questions</h2>
           </Section>
-
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[
-              {
-                q: "Who verifies my claims?",
-                a: "The organization itself. We send a secure, one-time verification link to a role-based email at the company or university (like hr@company.com or registrar@school.edu). The person receiving that link can confirm, correct, or dispute your claim.",
-              },
-              {
-                q: "Can I choose who verifies?",
-                a: "No. Stamp routes verification to the organization's registered verifier email. This prevents anyone from choosing a friendly contact to rubber-stamp a false claim. The verifier must hold a role-based email at the company's domain.",
-              },
-              {
-                q: "What if my company isn't on Stamp yet?",
-                a: "You can still add your claim. It will show as \"Not on Stamp\" until the company registers. You can also send the company an invite link to join. Once they register, all pending claims from that company are automatically sent for verification.",
-              },
-              {
-                q: "Does the verifier need to create an account?",
-                a: "No. Verification is done through a secure one-time link — no login, no account, no password. The link itself is the authentication. This makes it as easy as possible for busy HR teams to respond.",
-              },
-              {
-                q: "What does a verified badge actually mean?",
-                a: "It means the organization confirmed the claim was accurate at the time it was checked. Stamp is point-in-time verification, not ongoing monitoring. Each badge shows when the verification happened.",
-              },
+              { q: "Is Stamp free?", a: "Yes. Free for candidates. Free for companies. We'll introduce premium features for recruiters later, but the core platform is free." },
+              { q: "How does confirmation work?", a: "You add a claim (job or degree). We send a secure link to the organization. They confirm, correct, or dispute — no account needed. Takes one click." },
+              { q: "What if my company isn't on Stamp?", a: "Add your claim anyway. It sits as pending until the company registers. You can send them an invite link or request the company be added." },
+              { q: "Who can see my profile?", a: "Your public profile shows only confirmed claims. Resume visibility is controlled by you. 'Open to work' is never shown publicly — only employers see it in search." },
+              { q: "What makes this different?", a: "Every other platform is self-reported. Stamp is source-confirmed. The employer or university that would know confirms each claim. That's the trust layer no one else has." },
             ].map((item, i) => (
               <Section key={i}>
                 <details className="group bg-white rounded-2xl border border-gray-200 hover:border-gray-300 transition-colors">
-                  <summary className="flex items-center justify-between cursor-pointer px-7 py-5 text-[15px] font-semibold text-gray-900 select-none list-none">
+                  <summary className="flex items-center justify-between cursor-pointer px-6 py-5 text-[15px] font-semibold text-gray-900 select-none list-none">
                     {item.q}
                     <svg className="w-5 h-5 text-gray-400 group-open:rotate-45 transition-transform duration-200 shrink-0 ml-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                   </summary>
-                  <div className="px-7 pb-5 text-[15px] text-gray-500 leading-relaxed -mt-1">
-                    {item.a}
-                  </div>
+                  <div className="px-6 pb-5 text-[15px] text-gray-500 leading-relaxed -mt-1">{item.a}</div>
                 </details>
               </Section>
             ))}
@@ -407,18 +345,23 @@ function LandingContent() {
       </section>
 
       {/* ─── FINAL CTA ─── */}
-      <section className="py-32 px-6 relative overflow-hidden">
+      <section className="py-24 px-6 relative overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-blue-50 via-blue-50 to-blue-50 rounded-full blur-[100px] opacity-60" />
         </div>
         <Section>
           <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight">Ready to prove it?</h2>
-            <p className="mt-5 text-lg text-gray-500 font-medium leading-relaxed">Build a verified profile that speaks louder than any resume.</p>
-            <button onClick={openSignUp} className="mt-10 inline-flex items-center gap-3 bg-[#0A0A0A] text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all duration-300 shadow-2xl shadow-gray-900/25 hover:-translate-y-0.5">
-              Create your verified profile
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-            </button>
+            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">The hiring platform built on trust.</h2>
+            <p className="mt-5 text-lg text-gray-500 font-medium">Confirmed candidates. Real companies. Real jobs.</p>
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button onClick={openSignUp} className="inline-flex items-center gap-3 bg-[#0A0A0A] text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all shadow-2xl shadow-gray-900/25 hover:-translate-y-0.5">
+                Get Verified
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+              </button>
+              <Link href="/for-employers/register" className="inline-flex items-center gap-3 bg-white text-gray-900 border border-gray-200 px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-50 transition-all">
+                Start Hiring
+              </Link>
+            </div>
           </div>
         </Section>
       </section>
@@ -427,7 +370,11 @@ function LandingContent() {
       <footer className="border-t border-gray-100 py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-lg font-bold tracking-tight text-[#0A0A0A]">Stamp</span>
-          <p className="text-sm text-gray-400 font-medium">stampverified.com · your career, verified.</p>
+          <div className="flex items-center gap-6 text-sm text-gray-400">
+            <Link href="/jobs" className="hover:text-gray-600 transition-colors">Jobs</Link>
+            <Link href="/companies" className="hover:text-gray-600 transition-colors">Companies</Link>
+            <Link href="/for-employers" className="hover:text-gray-600 transition-colors">For Employers</Link>
+          </div>
         </div>
       </footer>
     </div>

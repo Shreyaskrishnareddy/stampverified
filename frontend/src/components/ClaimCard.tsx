@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import StatusBadge from "./StatusBadge";
 
 type EmploymentClaim = {
@@ -27,6 +28,20 @@ function formatType(t: string) {
   return t.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function calcDuration(startStr: string, endStr: string | null, isCurrent: boolean): string {
+  try {
+    const start = new Date(startStr);
+    const end = isCurrent ? new Date() : endStr ? new Date(endStr) : null;
+    if (!end) return "";
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    const years = Math.floor(months / 12);
+    const rem = months % 12;
+    if (years > 0 && rem > 0) return `${years}y ${rem}m`;
+    if (years > 0) return `${years}y`;
+    return `${Math.max(months, 1)}m`;
+  } catch { return ""; }
+}
+
 function DeleteBtn({ onClick }: { onClick: () => void }) {
   return (
     <button onClick={onClick} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all p-1.5 rounded-lg hover:bg-red-50" title="Delete">
@@ -38,17 +53,15 @@ function DeleteBtn({ onClick }: { onClick: () => void }) {
 }
 
 function CompanyLogo({ name, domain }: { name: string; domain?: string }) {
-  if (domain) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  if (domain && !imgFailed) {
     return (
       <img
-        src={`https://logo.clearbit.com/${domain}`}
+        src={`https://www.google.com/s2/favicons?sz=128&domain=${domain}`}
         alt=""
         className="w-10 h-10 rounded-xl bg-gray-50 object-contain border border-gray-100"
-        onError={(e) => {
-          const el = e.target as HTMLImageElement;
-          el.style.display = "none";
-          el.parentElement!.innerHTML = `<div class="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-400">${name.charAt(0).toUpperCase()}</div>`;
-        }}
+        onError={() => setImgFailed(true)}
       />
     );
   }
@@ -74,6 +87,7 @@ export function EmploymentCard({
     : claim.end_date
       ? `${formatDate(claim.start_date)} — ${formatDate(claim.end_date)}`
       : formatDate(claim.start_date);
+  const duration = calcDuration(claim.start_date, claim.end_date || null, claim.is_current);
   const v = claim.status === "verified";
 
   return (
@@ -88,7 +102,7 @@ export function EmploymentCard({
             </div>
             <p className="text-gray-600 text-sm mt-0.5">{claim.company_name}</p>
             <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
-              <span>{period}</span>
+              <span>{period}{duration ? ` · ${duration}` : ""}</span>
               {claim.department && <><span className="w-1 h-1 rounded-full bg-gray-300" /><span>{claim.department}</span></>}
               <span className="w-1 h-1 rounded-full bg-gray-300" />
               <span>{formatType(claim.employment_type)}</span>
@@ -145,13 +159,14 @@ export function EmploymentCard({
 }
 
 export function EducationCard({
-  claim, onDelete, onAcceptCorrection, onDenyCorrection, onInvite,
+  claim, onDelete, onAcceptCorrection, onDenyCorrection, onInvite, onResend,
 }: {
   claim: EducationClaim;
   onDelete?: (id: string) => void;
   onAcceptCorrection?: (id: string) => void;
   onDenyCorrection?: (id: string) => void;
   onInvite?: (name: string, domain: string) => void;
+  onResend?: (id: string) => void;
 }) {
   const dateRange = claim.start_date && claim.end_date
     ? `${formatDate(claim.start_date)} — ${formatDate(claim.end_date)}`
@@ -217,6 +232,13 @@ export function EducationCard({
             Invite {claim.institution} to join Stamp
           </button>
         </div>
+      )}
+
+      {/* Expired — show resend */}
+      {claim.status === "expired" && onResend && (
+        <button onClick={() => onResend(claim.id)} className="mt-3 text-xs font-medium text-amber-600 hover:text-amber-700">
+          Resend verification request
+        </button>
       )}
     </div>
   );

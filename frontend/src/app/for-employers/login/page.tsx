@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
+import Link from "next/link";
 
 export default function EmployerLoginPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function EmployerLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showWrongAccount, setShowWrongAccount] = useState(false);
@@ -22,11 +24,11 @@ export default function EmployerLoginPage() {
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) {
         try {
-          await api.getMyOrganization(data.session.access_token);
+          await api.getMyMembership(data.session.access_token);
           router.push("/employer/dashboard");
           return;
         } catch {
-          // Signed in but no org — show option to register or switch account
+          // Signed in but no workspace membership
           setExistingEmail(data.session.user.email || "");
           setShowWrongAccount(true);
         }
@@ -39,16 +41,24 @@ export default function EmployerLoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setMessage("");
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) throw signInError;
 
       if (data.session) {
+        // Try to get membership (works for both admins and members)
         try {
-          await api.getMyOrganization(data.session.access_token);
+          await api.getMyMembership(data.session.access_token);
           router.push("/employer/dashboard");
         } catch {
-          setError("No organization found for this account. Please register first.");
+          // Signed in but no workspace — try joining by domain
+          try {
+            await api.joinWorkspace(data.session.access_token);
+            router.push("/employer/dashboard");
+          } catch {
+            setError("No company workspace found for your email domain. Register your company first.");
+          }
         }
       }
     } catch (err: unknown) {
@@ -72,21 +82,21 @@ export default function EmployerLoginPage() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
           <div className="bg-[#0A0A0A] px-8 py-6 text-center">
             <span className="text-white font-bold text-lg">Stamp</span>
-            <p className="text-gray-400 text-sm mt-1">Organization sign in</p>
+            <p className="text-gray-400 text-sm mt-1">Employer sign in</p>
           </div>
           <div className="p-8">
             {showWrongAccount ? (
               <div className="space-y-4">
                 <div className="bg-amber-50 text-amber-800 text-sm px-4 py-3 rounded-xl border border-amber-200">
-                  You&apos;re signed in as <strong>{existingEmail}</strong>, but no organization is linked to this account.
+                  You&apos;re signed in as <strong>{existingEmail}</strong>, but no workspace is linked to this account.
                 </div>
                 <div className="space-y-3">
-                  <a
+                  <Link
                     href="/for-employers/register"
                     className="block w-full bg-[#0A0A0A] text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors text-center"
                   >
-                    Register an organization
-                  </a>
+                    Register your company
+                  </Link>
                   <button
                     onClick={async () => {
                       await supabase.auth.signOut();
@@ -106,10 +116,15 @@ export default function EmployerLoginPage() {
                 {error}
               </div>
             )}
+            {message && (
+              <div className="bg-emerald-50 text-emerald-700 text-sm px-4 py-3 rounded-xl mb-4 border border-emerald-100">
+                {message}
+              </div>
+            )}
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Organization email</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Company email</label>
                 <input
                   type="email"
                   value={email}
@@ -140,21 +155,21 @@ export default function EmployerLoginPage() {
               </button>
               <p className="text-center text-sm text-gray-400">
                 Don&apos;t have an account?{" "}
-                <a href="/for-employers/register" className="text-gray-700 font-medium hover:text-gray-900">
+                <Link href="/for-employers/register" className="text-gray-700 font-medium hover:text-gray-900">
                   Register
-                </a>
+                </Link>
               </p>
               <p className="text-center text-sm">
                 <button
                   type="button"
                   onClick={async () => {
                     if (!email) { setError("Enter your email first."); return; }
-                    setLoading(true); setError("");
+                    setLoading(true); setError(""); setMessage("");
                     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
                       redirectTo: `${window.location.origin}/auth/callback?redirect=/employer/settings`,
                     });
                     if (resetError) setError(resetError.message);
-                    else setError("Password reset link sent! Check your email.");
+                    else setMessage("Password reset link sent! Check your email.");
                     setLoading(false);
                   }}
                   className="text-gray-400 hover:text-gray-600 transition-colors"

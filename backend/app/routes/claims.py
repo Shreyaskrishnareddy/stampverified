@@ -1,4 +1,5 @@
 import secrets
+import html as html_lib
 from fastapi import APIRouter, Depends, HTTPException
 from app.middleware.auth import get_current_user
 from app.models.claims import (
@@ -13,6 +14,31 @@ from app.models.claims import (
 from app.config import get_supabase, get_settings
 from app.services.email import send_verification_email
 from app.services.notifications import notify_user, notify_org_admin
+
+
+def _h(text: str) -> str:
+    """HTML-escape a value for safe embedding in email HTML."""
+    return html_lib.escape(str(text)) if text else ""
+
+
+def _calc_duration(start_str: str, end_str: str | None, is_current: bool = False) -> str:
+    """Calculate human-readable duration from date strings."""
+    try:
+        from datetime import date as date_type
+        start = date_type.fromisoformat(str(start_str))
+        end = date_type.today() if is_current else (date_type.fromisoformat(str(end_str)) if end_str else None)
+        if not end:
+            return ""
+        months = (end.year - start.year) * 12 + (end.month - start.month)
+        years = months // 12
+        rem = months % 12
+        if years > 0 and rem > 0:
+            return f"{years}y {rem}m"
+        if years > 0:
+            return f"{years}y"
+        return f"{max(months, 1)}m"
+    except Exception:
+        return ""
 
 router = APIRouter(prefix="/api/claims", tags=["claims"])
 
@@ -122,10 +148,13 @@ async def create_employment_claim(
             period += f" to {claim.end_date}"
         elif claim.is_current:
             period += " to Present"
+        duration = _calc_duration(str(claim.start_date), str(claim.end_date) if claim.end_date else None, claim.is_current)
 
-        claim_details = f"<strong>{claim.title}</strong> at <strong>{claim.company_name}</strong><br>{period}"
+        claim_details = f"<strong>{_h(claim.title)}</strong> at <strong>{_h(claim.company_name)}</strong><br>{period}"
+        if duration:
+            claim_details += f" ({duration})"
         if claim.department:
-            claim_details += f"<br>Department: {claim.department}"
+            claim_details += f"<br>Department: {_h(claim.department)}"
 
         _send_claim_verification_email(org, claimer_name, "employment", claim_details, token)
 
@@ -240,7 +269,7 @@ async def update_employment_claim(
             title = update_data.get("title", old_claim["title"])
             company = update_data.get("company_name", old_claim["company_name"])
 
-            claim_details = f"<strong>{title}</strong> at <strong>{company}</strong> (updated claim — please re-verify)"
+            claim_details = f"<strong>{_h(title)}</strong> at <strong>{_h(company)}</strong> (updated claim — please re-verify)"
 
             _send_claim_verification_email(org.data[0], claimer_name, "employment", claim_details, new_token)
 
@@ -293,10 +322,10 @@ async def accept_employment_correction(claim_id: str, user: dict = Depends(get_c
     if claim["status"] != "correction_proposed":
         raise HTTPException(status_code=400, detail="No pending correction to accept")
 
-    from datetime import datetime
+    from datetime import datetime, timezone
     update_data = {
         "status": "verified",
-        "verified_at": datetime.utcnow().isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
     }
 
     # Apply corrections to the main fields
@@ -393,7 +422,7 @@ async def deny_employment_correction(
                 claim_table="employment_claims",
             )
 
-            claim_details = f"<strong>{claim['title']}</strong> at <strong>{claim['company_name']}</strong> (resubmitted after correction denial)"
+            claim_details = f"<strong>{_h(claim['title'])}</strong> at <strong>{_h(claim['company_name'])}</strong> (resubmitted after correction denial)"
             _send_claim_verification_email(org.data[0], claimer_name, "employment", claim_details, new_token)
 
     return result.data[0]
@@ -439,7 +468,7 @@ async def resend_employment_verification(claim_id: str, user: dict = Depends(get
         elif claim.get("is_current"):
             period += " to Present"
 
-        claim_details = f"<strong>{claim['title']}</strong> at <strong>{claim['company_name']}</strong><br>{period}"
+        claim_details = f"<strong>{_h(claim['title'])}</strong> at <strong>{_h(claim['company_name'])}</strong><br>{period}"
         _send_claim_verification_email(org.data[0], claimer_name, "employment", claim_details, new_token)
 
     return {"detail": "Verification request resent"}
@@ -500,9 +529,9 @@ async def create_education_claim(
         profile = supabase.table("profiles").select("full_name").eq("id", user["id"]).execute()
         claimer_name = profile.data[0]["full_name"] if profile.data else "Someone"
 
-        claim_details = f"<strong>{claim.degree}</strong> from <strong>{claim.institution}</strong>"
+        claim_details = f"<strong>{_h(claim.degree)}</strong> from <strong>{_h(claim.institution)}</strong>"
         if claim.field_of_study:
-            claim_details += f"<br>Field: {claim.field_of_study}"
+            claim_details += f"<br>Field: {_h(claim.field_of_study)}"
         if claim.end_date:
             claim_details += f"<br>Ended: {claim.end_date}"
 
@@ -593,7 +622,33 @@ async def update_education_claim(
         .eq("user_id", user["id"])
         .execute()
     )
-    return result.data[0]
+
+    updated_claim = result.data[0]
+
+    # If was verified/disputed and org exists, re-send verification email
+    if old_claim["status"] in ("verified", "correction_proposed", "disputed") and effective_org_id:
+        org = supabase.table("organizations").select("*").eq("id", effective_org_id).execute()
+        if org.data:
+            profile = supabase.table("profiles").select("full_name").eq("id", user["id"]).execute()
+            claimer_name = profile.data[0]["full_name"] if profile.data else "Someone"
+
+            degree = update_data.get("degree", old_claim["degree"])
+            institution = update_data.get("institution", old_claim["institution"])
+
+            claim_details = f"<strong>{_h(degree)}</strong> from <strong>{_h(institution)}</strong> (updated claim — please re-verify)"
+
+            _send_claim_verification_email(org.data[0], claimer_name, "education", claim_details, new_token)
+
+            notify_org_admin(
+                org_admin_email=org.data[0]["admin_email"],
+                type="claim_resubmitted",
+                title=f"{claimer_name} updated their education claim",
+                message=f"Previously {old_claim['status']}. Please re-verify.",
+                claim_id=claim_id,
+                claim_table="education_claims",
+            )
+
+    return updated_claim
 
 
 @router.delete("/education/{claim_id}")
@@ -633,10 +688,10 @@ async def accept_education_correction(claim_id: str, user: dict = Depends(get_cu
     if claim["status"] != "correction_proposed":
         raise HTTPException(status_code=400, detail="No pending correction to accept")
 
-    from datetime import datetime
+    from datetime import datetime, timezone
     update_data = {
         "status": "verified",
-        "verified_at": datetime.utcnow().isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
     }
 
     if claim.get("corrected_degree"):
@@ -702,6 +757,26 @@ async def deny_education_correction(
         .eq("id", claim_id)
         .execute()
     )
+
+    # Notify org admin and re-send verification email
+    if claim.get("organization_id"):
+        org = supabase.table("organizations").select("*").eq("id", claim["organization_id"]).execute()
+        if org.data:
+            profile = supabase.table("profiles").select("full_name").eq("id", user["id"]).execute()
+            claimer_name = profile.data[0]["full_name"] if profile.data else "Someone"
+
+            notify_org_admin(
+                org_admin_email=org.data[0]["admin_email"],
+                type="correction_denied",
+                title=f"{claimer_name} denied your correction",
+                message=f"Reason: {response.denial_reason}",
+                claim_id=claim_id,
+                claim_table="education_claims",
+            )
+
+            claim_details = f"<strong>{_h(claim['degree'])}</strong> from <strong>{_h(claim['institution'])}</strong> (resubmitted after correction denial)"
+            _send_claim_verification_email(org.data[0], claimer_name, "education", claim_details, new_token)
+
     return result.data[0]
 
 
@@ -739,7 +814,7 @@ async def resend_education_verification(claim_id: str, user: dict = Depends(get_
         profile = supabase.table("profiles").select("full_name").eq("id", user["id"]).execute()
         claimer_name = profile.data[0]["full_name"] if profile.data else "Someone"
 
-        claim_details = f"<strong>{claim['degree']}</strong> from <strong>{claim['institution']}</strong>"
+        claim_details = f"<strong>{_h(claim['degree'])}</strong> from <strong>{_h(claim['institution'])}</strong>"
         _send_claim_verification_email(org.data[0], claimer_name, "education", claim_details, new_token)
 
     return {"detail": "Verification request resent"}

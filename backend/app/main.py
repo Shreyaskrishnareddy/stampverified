@@ -7,6 +7,11 @@ from app.routes import (
     verify,
     organizations,
     employer,
+    team,
+    jobs,
+    applications,
+    messaging,
+    companies,
     notifications,
     lookup,
     invite,
@@ -37,6 +42,8 @@ app.add_middleware(
 # User-facing routes
 app.include_router(profile.router)
 app.include_router(claims.router)
+app.include_router(applications.router)
+app.include_router(messaging.router)
 app.include_router(notifications.router)
 app.include_router(invite.router)
 app.include_router(settings.router)
@@ -44,7 +51,12 @@ app.include_router(settings.router)
 # Organization & employer routes
 app.include_router(organizations.router)
 app.include_router(employer.router)
+app.include_router(team.router)
+app.include_router(jobs.router)
 app.include_router(verify.router)
+
+# Company directory + requests
+app.include_router(companies.router)
 
 # Lookup routes (Clearbit + HIPO)
 app.include_router(lookup.router)

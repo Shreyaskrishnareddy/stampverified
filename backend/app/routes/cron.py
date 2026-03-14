@@ -87,4 +87,20 @@ async def expire_claims(
         )
         expired_count += 1
 
-    return {"expired": expired_count}
+    # Expire jobs past their expiry date
+    expired_jobs = 0
+    expired_jobs_result = (
+        supabase.table("jobs")
+        .select("id,title,organization_id")
+        .eq("status", "active")
+        .lt("expires_at", datetime.now(timezone.utc).isoformat())
+        .execute()
+    )
+    for job in (expired_jobs_result.data or []):
+        supabase.table("jobs").update({
+            "status": "closed",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", job["id"]).execute()
+        expired_jobs += 1
+
+    return {"expired_claims": expired_count, "expired_jobs": expired_jobs}

@@ -150,39 +150,57 @@ export default function VerifyPage() {
                 <div>
                   <p className="text-lg font-bold text-gray-900">{claim.title as string}</p>
                   <p className="text-gray-600 mt-0.5">{claim.company_name as string}</p>
-                  <div className="flex items-center gap-3 mt-2 text-sm text-gray-400">
-                    <span>
-                      {claim.start_date as string}
-                      {claim.is_current ? " — Present" : claim.end_date ? ` — ${claim.end_date as string}` : ""}
-                    </span>
-                    {claim.department ? (
-                      <>
-                        <span className="w-1 h-1 rounded-full bg-gray-300" />
-                        <span>{claim.department as string}</span>
-                      </>
-                    ) : null}
+                  {typeof claim.department === "string" && <p className="text-sm text-gray-400 mt-0.5">{claim.department}</p>}
+
+                  {/* Dates + duration — shown prominently for verifier to check */}
+                  <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Claimed duration</p>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {claim.start_date ? new Date(claim.start_date as string + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Unknown"}
+                        {" — "}
+                        {claim.is_current ? "Present" : claim.end_date ? new Date(claim.end_date as string + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Unknown"}
+                      </p>
+                      <p className="text-sm font-bold text-blue-600 ml-4">
+                        {(() => {
+                          const start = claim.start_date ? new Date(claim.start_date as string) : null;
+                          const end = claim.is_current ? new Date() : claim.end_date ? new Date(claim.end_date as string) : null;
+                          if (!start || !end) return "";
+                          const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+                          const years = Math.floor(months / 12);
+                          const rem = months % 12;
+                          if (years > 0 && rem > 0) return `${years}y ${rem}m`;
+                          if (years > 0) return `${years}y`;
+                          return `${months}m`;
+                        })()}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div>
                   <p className="text-lg font-bold text-gray-900">{claim.degree as string}</p>
                   <p className="text-gray-600 mt-0.5">{claim.institution as string}</p>
-                  <div className="flex items-center gap-3 mt-2 text-sm text-gray-400">
-                    {claim.field_of_study ? <span>{claim.field_of_study as string}</span> : null}
-                    {claim.end_date || claim.start_date ? (
-                      <>
-                        {claim.field_of_study ? <span className="w-1 h-1 rounded-full bg-gray-300" /> : null}
-                        <span>
-                          {claim.start_date ? new Date(claim.start_date as string + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}
-                          {claim.start_date && claim.end_date ? " — " : ""}
-                          {claim.end_date ? new Date(claim.end_date as string + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}
-                        </span>
-                      </>
-                    ) : null}
-                  </div>
+                  {typeof claim.field_of_study === "string" && <p className="text-sm text-gray-400 mt-0.5">{claim.field_of_study}</p>}
+
+                  {/* Dates — shown prominently */}
+                  {(typeof claim.start_date === "string" || typeof claim.end_date === "string") && (
+                    <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Claimed period</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {claim.start_date ? new Date(claim.start_date as string + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" }) : ""}
+                        {claim.start_date && claim.end_date ? " — " : ""}
+                        {claim.end_date ? new Date(claim.end_date as string + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" }) : ""}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+
+            <p className="text-xs text-amber-600 font-medium mt-3 text-center">
+              Please confirm the role, dates, and duration are all accurate.
+            </p>
           </div>
 
           {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">{error}</div>}

@@ -21,6 +21,7 @@ export default function EmployerSettingsPage() {
   const [logoUrl, setLogoUrl] = useState("");
 
   // Password
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
@@ -78,8 +79,8 @@ export default function EmployerSettingsPage() {
     try {
       const { data } = await supabase.auth.getSession();
       if (!data.session) return;
-      await api.changePassword(data.session.access_token, newPassword);
-      setNewPassword("");
+      await api.changePassword(data.session.access_token, currentPassword, newPassword);
+      setCurrentPassword(""); setNewPassword("");
       addToast("Password updated.");
     } catch (err: unknown) {
       addToast((err as Error).message, "error");
@@ -179,6 +180,18 @@ export default function EmployerSettingsPage() {
         {/* Password */}
         <form onSubmit={handlePasswordChange} className="bg-white rounded-2xl border border-gray-200 p-8 mb-6 animate-fade-in">
           <h2 className="text-lg font-bold text-gray-900 mb-6">Change password</h2>
+          <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Current password</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              placeholder="Your current password"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            />
+          </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">New password</label>
             <input
@@ -190,6 +203,7 @@ export default function EmployerSettingsPage() {
               placeholder="Min 8 characters"
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
             />
+          </div>
           </div>
           <button
             type="submit"
