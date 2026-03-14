@@ -207,6 +207,106 @@ function LandingContent() {
             <Link href="/jobs" className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors">Browse Jobs</Link>
             <Link href="/companies" className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors">Browse Companies</Link>
           </div>
+
+          {/* Hero demo card */}
+          <div className="animate-fade-up delay-500 mt-16 relative max-w-xl mx-auto">
+            <div className="absolute -inset-4 bg-gradient-to-r from-blue-100/40 via-blue-50/30 to-blue-100/40 rounded-[2rem] blur-2xl opacity-60" />
+            <div className="relative bg-white rounded-2xl shadow-2xl shadow-gray-300/30 overflow-hidden border border-gray-100">
+              {heroMode === "candidate" ? (
+                /* Candidate mode: verified profile card */
+                <div className="p-6 sm:p-8">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-600/30">S</div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-bold text-gray-900">Sarah Martinez</h3>
+                          <BlueTick className="w-5 h-5" />
+                        </div>
+                        <p className="text-sm text-gray-500">Product Lead at Notion</p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-gray-900">2 of 3</p>
+                      <p className="text-[11px] text-gray-400">verified</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2.5">
+                    {[
+                      { title: "Product Lead", co: "Notion", date: "2022 — Present · 4y", verified: true },
+                      { title: "Sr. Product Manager", co: "Stripe", date: "2019 — 2022 · 3y", verified: true },
+                      { title: "MBA, Business", co: "Stanford GSB", date: "Class of 2019", verified: false },
+                    ].map((item, i) => (
+                      <div key={i} className={`flex items-center gap-3.5 p-3.5 rounded-xl border transition-all ${item.verified ? "bg-blue-50/40 border-blue-100" : "bg-gray-50/50 border-gray-100"}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${item.verified ? "bg-white text-blue-600 border border-blue-200 shadow-sm" : "bg-white text-gray-400 border border-gray-200"}`}>
+                          {item.co.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{item.title}</p>
+                          <p className="text-xs text-gray-500">{item.co} &middot; {item.date}</p>
+                        </div>
+                        {item.verified ? (
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                            <BlueTick className="w-3 h-3" />
+                            Verified
+                          </span>
+                        ) : (
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5 pt-4 border-t border-gray-100">
+                    <p className="text-[11px] text-gray-400 font-mono">stampverified.com/sarah</p>
+                  </div>
+                </div>
+              ) : (
+                /* Employer mode: job posting card */
+                <div className="p-6 sm:p-8">
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-emerald-600/30">A</div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Senior Software Engineer</h3>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-sm text-gray-500">Acme Corp</p>
+                        <BlueTick className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-5">
+                    <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">San Francisco · Hybrid</span>
+                    <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">$180K – $220K</span>
+                    <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">Full-time · Senior</span>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Recent applicants</p>
+                    {[
+                      { name: "Alex Chen", info: "3 verified claims", badge: "Shortlisted" },
+                      { name: "Maria Kim", info: "2 verified claims", badge: "Applied" },
+                    ].map((app, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">{app.name.charAt(0)}</div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{app.name}</p>
+                            <p className="text-[11px] text-gray-400">{app.info}</p>
+                          </div>
+                        </div>
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${app.badge === "Shortlisted" ? "text-emerald-700 bg-emerald-100" : "text-gray-500 bg-gray-100"}`}>{app.badge}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <p className="text-[11px] text-gray-400">Posted by <span className="inline-flex items-center gap-0.5">Jane <GoldTick className="w-3 h-3" /></span></p>
+                    <p className="text-[11px] text-gray-400">Every applicant is verified</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
