@@ -143,8 +143,8 @@ function LandingContent() {
 
   const heroContent = {
     candidate: {
-      headline: <>Every claim on your profile{" "}<br className="hidden sm:block" />is verified by the source.</>,
-      subtext: "Add your job or degree. The employer verifies it. A badge appears. Share your profile anywhere.",
+      headline: <>Your career, verified.</>,
+      subtext: "Add your job or degree. Your employer verifies it. A badge appears. Share your profile anywhere.",
       cta: "Get Verified",
       ctaAction: openSignUp,
     },
