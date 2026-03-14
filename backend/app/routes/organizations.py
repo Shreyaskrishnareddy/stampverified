@@ -368,21 +368,54 @@ async def upload_logo(
 
 @router.get("/search")
 async def search_organizations(q: str):
-    """Search registered orgs by name (for the claim dropdown).
-    Returns public info only — no admin emails.
+    """Search registered orgs by name or domain.
+
+    If query contains a dot (looks like a domain), search by exact domain first.
+    Otherwise search by name. Returns public info only — no admin emails.
     """
     if not q or len(q) < 2:
         return []
 
     try:
         supabase = get_supabase()
-        result = (
+        q_clean = q.strip().lower()
+
+        # If it looks like a domain (contains a dot), try exact domain match first
+        if "." in q_clean:
+            domain_result = (
+                supabase.table("organizations")
+                .select("id,name,domain,org_type,logo_url,is_domain_verified")
+                .eq("domain", q_clean)
+                .execute()
+            )
+            if domain_result.data:
+                return domain_result.data
+
+        # Search by name (ilike) and domain (ilike) combined
+        name_results = (
             supabase.table("organizations")
             .select("id,name,domain,org_type,logo_url,is_domain_verified")
-            .ilike("name", f"%{q}%")
+            .ilike("name", f"%{q_clean}%")
             .limit(10)
             .execute()
         )
-        return result.data or []
+
+        domain_results = (
+            supabase.table("organizations")
+            .select("id,name,domain,org_type,logo_url,is_domain_verified")
+            .ilike("domain", f"%{q_clean}%")
+            .limit(10)
+            .execute()
+        )
+
+        # Merge and deduplicate (domain matches may overlap with name matches)
+        seen = set()
+        combined = []
+        for org in (domain_results.data or []) + (name_results.data or []):
+            if org["id"] not in seen:
+                seen.add(org["id"])
+                combined.append(org)
+
+        return combined[:10]
     except Exception:
         return []
