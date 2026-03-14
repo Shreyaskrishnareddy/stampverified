@@ -31,7 +31,7 @@ const BlueTick = ({ className = "w-4 h-4" }: { className?: string }) => (
 );
 
 const GoldTick = ({ className = "w-4 h-4" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="#D97706">
+  <svg className={className} viewBox="0 0 24 24" fill="#C8A235">
     <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
   </svg>
 );
@@ -143,15 +143,15 @@ function LandingContent() {
 
   const heroContent = {
     candidate: {
-      headline: <>Every claim on your profile{" "}<br className="hidden sm:block" />is confirmed by the source.</>,
-      subtext: "Add your job or degree. The employer confirms it. A badge appears. Share your profile anywhere.",
-      cta: "Get Verified — Free",
+      headline: <>Every claim on your profile{" "}<br className="hidden sm:block" />is verified by the source.</>,
+      subtext: "Add your job or degree. The employer verifies it. A badge appears. Share your profile anywhere.",
+      cta: "Get Verified",
       ctaAction: openSignUp,
     },
     employer: {
       headline: <>Hire from a pool where{" "}<br className="hidden sm:block" />every resume is real.</>,
-      subtext: "Post jobs. Search candidates with confirmed backgrounds. No fake resumes. No background check needed.",
-      cta: "Start Hiring — Free",
+      subtext: "Post jobs. Search candidates with verified backgrounds. No fake resumes. No background check needed.",
+      cta: "Start Hiring",
       ctaAction: () => window.location.href = "/for-employers/register",
     },
   };
@@ -216,15 +216,15 @@ function LandingContent() {
           <Section>
             <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4 text-center">The trust difference</p>
             <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight text-center">
-              Confirmed candidates.{" "}<br className="hidden sm:block" />Real companies. Real jobs.
+              Verified candidates.{" "}<br className="hidden sm:block" />Verified companies. Real jobs.
             </h2>
           </Section>
 
           <div className="mt-16 grid md:grid-cols-3 gap-6">
             {[
-              { icon: <BlueTick className="w-8 h-8" />, title: "Confirmed Candidates", desc: "Every claim on a candidate's profile is checked by the source employer or university. Not self-reported." },
-              { icon: <BlueTick className="w-8 h-8" />, title: "Real Companies", desc: "Every company on Stamp is domain-verified with a real team behind it. No ghost companies, no scams." },
-              { icon: <GoldTick className="w-8 h-8" />, title: "Real Hiring Teams", desc: "Every recruiter is an approved member of a real company. You always know who you're talking to." },
+              { icon: <BlueTick className="w-8 h-8" />, title: "Verified Candidates", desc: "Every claim on a candidate's profile is verified by the source employer or university. Not self-reported." },
+              { icon: <BlueTick className="w-8 h-8" />, title: "Verified Companies", desc: "Every company on Stamp is domain-verified with a real team behind it. No ghost companies, no scams." },
+              { icon: <GoldTick className="w-8 h-8" />, title: "Verified Hiring Teams", desc: "Every recruiter is an approved member of a verified company. You always know who you're talking to." },
             ].map((item) => (
               <Section key={item.title}>
                 <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 transition-all h-full">
@@ -243,13 +243,13 @@ function LandingContent() {
         <div className="max-w-5xl mx-auto">
           <Section>
             <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">For Candidates</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">Get confirmed. Get found. Get hired.</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">Get verified. Get found. Get hired.</h2>
           </Section>
           <div className="mt-12 grid md:grid-cols-3 gap-6">
             {[
-              { n: "1", title: "Get confirmed", desc: "Add your work and education history. Your employer or university confirms it with one click." },
+              { n: "1", title: "Get verified", desc: "Add your work and education history. Your employer or university verifies it with one click." },
               { n: "2", title: "Browse real jobs", desc: "Every job on Stamp is from a real company with a real hiring team. No scams, no ghost postings." },
-              { n: "3", title: "Apply with proof", desc: "Your confirmed profile replaces the resume cover letter cycle. Employers see the proof up front." },
+              { n: "3", title: "Apply with proof", desc: "Your verified profile replaces the resume cover letter cycle. Employers see the proof up front." },
             ].map(step => (
               <Section key={step.n}>
                 <div className="bg-white rounded-2xl p-7 border border-gray-200 h-full">
@@ -267,18 +267,18 @@ function LandingContent() {
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <Section>
-            <p className="text-sm font-bold text-amber-600 uppercase tracking-widest mb-4">For Employers</p>
+            <p className="text-sm font-bold uppercase tracking-widest mb-4" style={{ color: "#C8A235" }}>For Employers</p>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">Post jobs. Find talent. Skip the noise.</h2>
           </Section>
           <div className="mt-12 grid md:grid-cols-3 gap-6">
             {[
               { n: "1", title: "Register your company", desc: "Verify your domain. Invite your hiring team. Takes 2 minutes. Free to start." },
               { n: "2", title: "Post and paste", desc: "Paste your job description. We extract the details. Review and publish in under 60 seconds." },
-              { n: "3", title: "Hire with confidence", desc: "Every applicant has a confirmed background. Search talent directly. No background check needed." },
+              { n: "3", title: "Hire with confidence", desc: "Every applicant has a verified background. Search talent directly. No background check needed." },
             ].map(step => (
               <Section key={step.n}>
                 <div className="bg-white rounded-2xl p-7 border border-gray-200 h-full">
-                  <div className="w-10 h-10 rounded-full bg-amber-600 flex items-center justify-center text-white text-sm font-extrabold mb-5">{step.n}</div>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-extrabold mb-5" style={{ backgroundColor: "#C8A235" }}>{step.n}</div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">{step.title}</h3>
                   <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
                 </div>
@@ -325,10 +325,10 @@ function LandingContent() {
           <div className="space-y-3">
             {[
               { q: "Is Stamp free?", a: "Yes. Free for candidates. Free for companies. We'll introduce premium features for recruiters later, but the core platform is free." },
-              { q: "How does confirmation work?", a: "You add a claim (job or degree). We send a secure link to the organization. They confirm, correct, or dispute — no account needed. Takes one click." },
+              { q: "How does verification work?", a: "You add a claim (job or degree). We send a secure link to the organization. They verify, correct, or dispute — no account needed. Takes one click." },
               { q: "What if my company isn't on Stamp?", a: "Add your claim anyway. It sits as pending until the company registers. You can send them an invite link or request the company be added." },
-              { q: "Who can see my profile?", a: "Your public profile shows only confirmed claims. Resume visibility is controlled by you. 'Open to work' is never shown publicly — only employers see it in search." },
-              { q: "What makes this different?", a: "Every other platform is self-reported. Stamp is source-confirmed. The employer or university that would know confirms each claim. That's the trust layer no one else has." },
+              { q: "Who can see my profile?", a: "Your public profile shows only verified claims. Resume visibility is controlled by you. 'Open to work' is never shown publicly — only employers see it in search." },
+              { q: "What makes this different?", a: "Every other platform is self-reported. Stamp is source-verified. The employer or university that would know verifies each claim. That's the trust layer no one else has." },
             ].map((item, i) => (
               <Section key={i}>
                 <details className="group bg-white rounded-2xl border border-gray-200 hover:border-gray-300 transition-colors">
@@ -352,7 +352,7 @@ function LandingContent() {
         <Section>
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">The hiring platform built on trust.</h2>
-            <p className="mt-5 text-lg text-gray-500 font-medium">Confirmed candidates. Real companies. Real jobs.</p>
+            <p className="mt-5 text-lg text-gray-500 font-medium">Verified candidates. Verified companies. Real jobs.</p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <button onClick={openSignUp} className="inline-flex items-center gap-3 bg-[#0A0A0A] text-white px-8 py-4 rounded-2xl text-[15px] font-semibold hover:bg-gray-800 transition-all shadow-2xl shadow-gray-900/25 hover:-translate-y-0.5">
                 Get Verified
