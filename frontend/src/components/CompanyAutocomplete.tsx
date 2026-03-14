@@ -21,7 +21,7 @@ function looksLikeDomain(q: string): boolean {
   return q.includes(".") && !q.includes(" ");
 }
 
-export default function CompanyAutocomplete({ value, domain, onChange, placeholder = "Search by company name or domain..." }: Props) {
+export default function CompanyAutocomplete({ value, domain, onChange, placeholder = "Enter company name or domain..." }: Props) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<Company[]>([]);
   const [isOpen, setIsOpen] = useState(false);
