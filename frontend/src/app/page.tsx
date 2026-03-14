@@ -272,7 +272,7 @@ function LandingContent() {
                       <h3 className="font-bold text-gray-900">Senior Software Engineer</h3>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <p className="text-sm text-gray-500">Acme Corp</p>
-                        <BlueTick className="w-4 h-4" />
+                        <GoldTick className="w-4 h-4" />
                       </div>
                     </div>
                   </div>
