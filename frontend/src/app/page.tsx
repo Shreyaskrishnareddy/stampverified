@@ -322,7 +322,7 @@ function LandingContent() {
 
           <div className="mt-16 grid md:grid-cols-3 gap-6">
             {[
-              { icon: <GoldTick className="w-8 h-8" />, title: "Verified Candidates", desc: "Every claim on a candidate's profile is verified by the source employer or university. Not self-reported." },
+              { icon: <BlueTick className="w-8 h-8" />, title: "Verified Candidates", desc: "Every claim on a candidate's profile is verified by the source employer or university. Not self-reported." },
               { icon: <BlueTick className="w-8 h-8" />, title: "Verified Companies", desc: "Every company on Stamp is domain-verified with a real team behind it. No ghost companies, no scams." },
               { icon: <GoldTick className="w-8 h-8" />, title: "Verified Hiring Teams", desc: "Every recruiter is an approved member of a verified company. You always know who you're talking to." },
             ].map((item) => (
