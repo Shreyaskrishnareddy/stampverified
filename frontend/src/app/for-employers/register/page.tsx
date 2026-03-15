@@ -253,7 +253,14 @@ function RegisterContent() {
                   <CompanyAutocomplete
                     value={companyName}
                     domain={companyDomain}
-                    onChange={(name: string, domain: string) => handleCompanySelect(name, domain)}
+                    onChange={(name: string, domain: string) => {
+                      setCompanyName(name);
+                      setCompanyDomain(domain);
+                      // Only advance when user SELECTS from dropdown (domain is set)
+                      if (domain) {
+                        handleCompanySelect(name, domain);
+                      }
+                    }}
                   />
                   <p className="text-xs text-gray-400 mt-2">Select your company from the dropdown to continue.</p>
                 </div>

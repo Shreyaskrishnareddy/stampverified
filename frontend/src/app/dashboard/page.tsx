@@ -773,7 +773,6 @@ export default function Dashboard() {
                   value={eduInstitution}
                   domain={eduInstitutionDomain}
                   onChange={(name, domain) => { setEduInstitution(name); setEduInstitutionDomain(domain); }}
-                  placeholder="Search university..."
                 />
               </div>
               <div>
