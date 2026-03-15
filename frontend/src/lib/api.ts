@@ -215,6 +215,24 @@ export const api = {
   closeJob: (token: string, jobId: string) =>
     request(`/api/employer/jobs/${jobId}`, { method: "DELETE", headers: authHeaders(token) }),
 
+  // ── Job Matching ──
+  matchJobsFromResume: async (token: string | null, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${API_URL}/api/jobs/match`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: "Failed to process resume" }));
+      throw new Error(error.detail);
+    }
+    return res.json();
+  },
+
   // ── Candidate Preferences ──
   getCandidatePreferences: (token: string) =>
     request("/api/candidate/preferences", { headers: authHeaders(token) }),

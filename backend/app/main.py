@@ -9,6 +9,7 @@ from app.routes import (
     employer,
     team,
     jobs,
+    job_match,
     applications,
     messaging,
     companies,
@@ -33,6 +34,7 @@ app.add_middleware(
         app_settings.frontend_url,
         app_settings.frontend_url.replace("://", "://www."),
         "http://localhost:3000",
+        "http://localhost:3001",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -53,6 +55,7 @@ app.include_router(organizations.router)
 app.include_router(employer.router)
 app.include_router(team.router)
 app.include_router(jobs.router)
+app.include_router(job_match.router)
 app.include_router(verify.router)
 
 # Company directory + requests

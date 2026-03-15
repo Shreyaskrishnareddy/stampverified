@@ -204,6 +204,7 @@ function LandingContent() {
 
           {/* Quick links */}
           <div className="animate-fade-up delay-500 mt-8 flex items-center justify-center gap-6">
+            <Link href="/match-jobs" className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors">Upload Resume</Link>
             <Link href="/jobs" className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors">Browse Jobs</Link>
             <Link href="/companies" className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors">Browse Companies</Link>
           </div>
