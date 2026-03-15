@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0A0A0A"/>
+
+  <!-- Subtle gradient -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0A0A0A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Badge mark -->
+  <path fill="#3B82F6" transform="translate(520, 170)" d="M53.5 22.5C56.3 16.3 62.7 12 70 12c7.3 0 13.7 4.3 16.5 10.5 5.5-.3 11 1.5 15 5.5 4 4 5.8 9.5 5.5 15C113.2 46.4 118 53.5 118 61.5c0 8-4.8 15.1-11 18.5.3 5.5-1.5 11-5.5 15-4 4-9.5 5.8-15 5.5C83.7 106.7 77.3 111 70 111c-7.3 0-13.7-4.3-16.5-10.5-5.5.3-11-1.5-15-5.5-4-4-5.8-9.5-5.5-15C27 76.6 22.2 69.5 22.2 61.5c0-8 4.8-15.1 11-18.5-.3-5.5 1.5-11 5.5-15 4-4 9.5-5.8 14.8-5.5z"/>
+  <path fill="white" transform="translate(520, 170)" d="M63 72l-10-10c-1.3-1.3-1.3-3.3 0-4.5 1.3-1.3 3.3-1.3 4.5 0l7.7 7.7 16-20c1.2-1.4 3.2-1.6 4.6-.4 1.4 1.2 1.6 3.2.4 4.6L67.8 72.2c-1.2 1.5-3.5 1.5-4.8-.2z"/>
+
+  <!-- Wordmark -->
+  <text x="600" y="360" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-weight="800" font-size="64" fill="white" letter-spacing="-2">Stamp</text>
+
+  <!-- Tagline -->
+  <text x="600" y="410" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-weight="500" font-size="20" fill="#6B7280">Verified candidates. Verified companies. Real jobs.</text>
+</svg>

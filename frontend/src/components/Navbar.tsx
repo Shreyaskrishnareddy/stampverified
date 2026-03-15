@@ -17,6 +17,7 @@ type MemberInfo = {
 export default function Navbar() {
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [member, setMember] = useState<MemberInfo | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -59,6 +60,20 @@ export default function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-4">
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="sm:hidden p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+            aria-label="Menu"
+          >
+            {showMobileMenu ? (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+            )}
+          </button>
+
+          {/* Desktop links */}
           <Link
             href="/jobs"
             className="hidden sm:block text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
@@ -176,6 +191,28 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mobile menu */}
+      {showMobileMenu && (
+        <div className="sm:hidden border-t border-gray-100 bg-white px-6 py-4 animate-slide-down">
+          <div className="space-y-1">
+            <Link href="/jobs" className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setShowMobileMenu(false)}>
+              Jobs
+            </Link>
+            {!isEmployerRoute && !member && (
+              <Link href="/for-employers" className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setShowMobileMenu(false)}>
+                For Employers
+              </Link>
+            )}
+            <Link href="/companies" className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setShowMobileMenu(false)}>
+              Companies
+            </Link>
+            <Link href="/match-jobs" className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setShowMobileMenu(false)}>
+              Upload Resume
+            </Link>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
