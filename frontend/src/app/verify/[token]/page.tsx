@@ -126,7 +126,8 @@ export default function VerifyPage() {
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-4 py-12">
       <div className="animate-fade-in bg-white rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 w-full max-w-lg overflow-hidden">
-        <div className="bg-[#0A0A0A] px-8 py-6 text-center">
+        <div className="bg-[#0A0A0A] px-8 py-6 flex flex-col items-center">
+          <img src="/logo-sm.png" alt="Stamp" className="w-8 h-8 mb-2 invert brightness-200" />
           <span className="text-white font-bold text-lg">Stamp</span>
           <p className="text-gray-400 text-sm mt-1">Verification request</p>
         </div>

@@ -179,27 +179,20 @@ export default function JobMatchPage() {
               </div>
             )}
 
-            {/* Job count */}
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-gray-500">
-                {jobs.length} matching job{jobs.length !== 1 ? "s" : ""} found
-                {stampCount > 0 && <span className="text-blue-600 font-medium"> ({stampCount} on Stamp)</span>}
-              </p>
-            </div>
+            {(() => {
+              const stampJobs = jobs.filter(j => j.is_stamp_verified);
+              const externalJobs = jobs.filter(j => !j.is_stamp_verified);
 
-            {/* Job list */}
-            <div className="space-y-3">
-              {jobs.map((job, i) => (
+              const renderJobCard = (job: Job, i: number) => (
                 <div
                   key={`${job.title}-${job.company}-${i}`}
                   className={`bg-white rounded-2xl border p-5 transition-all ${
                     job.is_stamp_verified
-                      ? "border-blue-200 hover:border-blue-300 hover:shadow-md"
+                      ? "border-amber-200/60 hover:border-amber-300 hover:shadow-md"
                       : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
                   }`}
                 >
                   <div className="flex items-start gap-4">
-                    {/* Company logo */}
                     <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {job.company_logo ? (
                         <img src={job.company_logo} alt="" className="w-full h-full object-contain" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
@@ -209,7 +202,6 @@ export default function JobMatchPage() {
                         <span className="text-sm font-bold text-gray-400">{job.company?.[0]}</span>
                       )}
                     </div>
-
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900 truncate">{job.title}</h3>
@@ -228,8 +220,6 @@ export default function JobMatchPage() {
                         <p className="text-xs text-gray-400 mt-2 line-clamp-2">{job.description_snippet}</p>
                       )}
                     </div>
-
-                    {/* Action */}
                     <div className="flex-shrink-0">
                       {job.is_stamp_verified ? (
                         <Link
@@ -252,17 +242,60 @@ export default function JobMatchPage() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+
+              return (
+                <>
+                  {/* Section 1: Stamp Verified Jobs */}
+                  <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#C8A235"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>
+                      <h3 className="text-sm font-bold text-gray-900">Jobs on Stamp</h3>
+                    </div>
+                    {stampJobs.length > 0 ? (
+                      <>
+                        <p className="text-xs text-gray-400 mb-4">Real recruiters. Verified company. Apply directly with your verified profile.</p>
+                        <div className="space-y-3">
+                          {stampJobs.map((job, i) => renderJobCard(job, i))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-amber-200/60 bg-amber-50/30 p-6 text-center">
+                        <p className="text-sm font-medium text-gray-700">Verified jobs are coming soon</p>
+                        <p className="text-xs text-gray-400 mt-1.5 max-w-md mx-auto">
+                          When verified companies post on Stamp, their jobs appear here first. No fake postings. No ghost listings. Just real roles from real teams.
+                        </p>
+                        <Link href="/for-employers" className="inline-block mt-4 text-xs font-semibold text-amber-700 hover:text-amber-800 transition-colors">
+                          Are you hiring? Post on Stamp →
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section 2: External Jobs */}
+                  {externalJobs.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-500 mb-1">
+                        {stampJobs.length > 0 ? "More Matching Jobs" : "Matching Jobs"}
+                      </h3>
+                      <p className="text-xs text-gray-400 mb-4">Relevant jobs from across the web.</p>
+                      <div className="space-y-3">
+                        {externalJobs.map((job, i) => renderJobCard(job, i))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* CTA */}
             <div className="mt-8 bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-100 p-8 text-center">
               <h3 className="text-lg font-bold text-gray-900 mb-2">Stand out from other applicants</h3>
               <p className="text-sm text-gray-500 mb-6">
-                Get your experience verified by your employer. Candidates with the ✓ badge get noticed first.
+                Add your experience and get your first claim verified to stand out when you apply.
               </p>
               <Link
-                href="/dashboard"
+                href={token ? "/dashboard?from=match" : "/?auth=signup&next=/dashboard?from=match"}
                 className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
               >
                 Get Verified

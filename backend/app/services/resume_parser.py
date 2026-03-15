@@ -105,23 +105,43 @@ def parse_resume(text: str) -> ResumeData:
             if len(title) > 5 and title not in result.titles:
                 result.titles.append(title.title())
 
-    # Also look for titles on lines that precede company-like patterns
-    for i, line in enumerate(lines):
+    # Extract title-company pairs from common resume line formats
+    _DATE_SUFFIX = r'\s*[\u2014\u2013\-|,]\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|20[0-2]\d|19[89]\d|Present|Current).*$'
+
+    # Patterns ordered by specificity (most specific first)
+    _LINE_PATTERNS = [
+        # "Title at Company" or "Title @ Company"
+        r'^(.+?)\s+(?:at|@)\s+(.+?)$',
+        # "Title | Company" or "Title | Company | dates"
+        r'^([^|]+?)\s*\|\s*([^|]+?)(?:\s*\|.*)?$',
+        # "Title — Company" or "Title – Company" (em/en dash)
+        r'^(.+?)\s*[\u2014\u2013]\s*(.+?)$',
+    ]
+
+    for line in lines:
         line_stripped = line.strip()
-        # Lines that look like "Software Engineer at Google" or "Software Engineer | Google"
-        title_company = re.match(
-            r'^(.+?)\s+(?:at|@)\s+(.+?)(?:\s*[\|,\u2014\u2013]|$)',
-            line_stripped
-        )
-        if title_company:
-            title = title_company.group(1).strip()
-            company = title_company.group(2).strip()
-            # Clean date fragments from company name
-            company = re.sub(r'\s*[\u2014\u2013\-]\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*$', '', company).strip()
-            if 3 < len(title) < 60 and title not in result.titles:
-                result.titles.append(title)
-            if 2 < len(company) < 40 and company not in result.companies:
-                result.companies.append(company)
+        if not line_stripped or len(line_stripped) < 5 or len(line_stripped) > 120:
+            continue
+
+        for pat in _LINE_PATTERNS:
+            m = re.match(pat, line_stripped)
+            if m:
+                title = m.group(1).strip()
+                company = m.group(2).strip()
+
+                # Strip date fragments from the end of company
+                company = re.sub(_DATE_SUFFIX, '', company, flags=re.IGNORECASE).strip()
+                # Strip date fragments from end of title too
+                title = re.sub(_DATE_SUFFIX, '', title, flags=re.IGNORECASE).strip()
+                # Strip trailing punctuation
+                company = company.rstrip('|,;: ')
+                title = title.rstrip('|,;: ')
+
+                if 3 < len(title) < 60 and title not in result.titles:
+                    result.titles.append(title)
+                if 2 < len(company) < 40 and company not in result.companies:
+                    result.companies.append(company)
+                break  # First matching pattern wins for this line
 
     # Extract location
     for pattern in _LOCATION_PATTERNS:

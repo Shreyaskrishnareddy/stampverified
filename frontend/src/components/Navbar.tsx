@@ -53,6 +53,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
+          <img src="/logo-sm.png" alt="Stamp" className="w-7 h-7" />
           <span className="text-lg font-bold tracking-tight text-[#0A0A0A]">Stamp</span>
         </Link>
 

@@ -75,7 +75,10 @@ function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; o
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push("/dashboard");
+        // Redirect to next param or dashboard
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get("next");
+        router.push(next || "/dashboard");
       }
     } catch (err: unknown) { setError((err as Error).message); }
     setLoading(false);
@@ -85,9 +88,7 @@ function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; o
     <div className="fixed inset-0 bg-black/40 modal-backdrop flex items-center justify-center p-4 z-[60]" onClick={onClose}>
       <div className="animate-scale-in bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[#0A0A0A] flex items-center justify-center">
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
+          <img src="/logo-sm.png" alt="Stamp" className="w-10 h-10 rounded-xl" />
           <div>
             <h2 className="text-xl font-bold text-gray-900">
               {mode === "forgot" ? "Reset password" : mode === "signup" ? "Create account" : "Welcome back"}
@@ -470,7 +471,10 @@ function LandingContent() {
       {/* ─── FOOTER ─── */}
       <footer className="border-t border-gray-100 py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-lg font-bold tracking-tight text-[#0A0A0A]">Stamp</span>
+          <div className="flex items-center gap-2">
+            <img src="/logo-sm.png" alt="Stamp" className="w-6 h-6" />
+            <span className="text-lg font-bold tracking-tight text-[#0A0A0A]">Stamp</span>
+          </div>
           <div className="flex items-center gap-6 text-sm text-gray-400">
             <Link href="/jobs" className="hover:text-gray-600 transition-colors">Jobs</Link>
             <Link href="/companies" className="hover:text-gray-600 transition-colors">Companies</Link>

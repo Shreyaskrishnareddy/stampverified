@@ -162,7 +162,10 @@ export default function PublicProfile() {
       <footer className="border-t border-gray-100 py-8 px-6">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-sm text-gray-400">
-            Confirmed on <a href="/" className="font-semibold text-gray-600 hover:text-gray-900 transition-colors">Stamp</a>
+            <a href="/" className="inline-flex items-center gap-1.5 font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+              <img src="/logo-sm.png" alt="" className="w-4 h-4" />
+              Confirmed on Stamp
+            </a>
           </p>
           <div className="flex items-center gap-4 text-xs text-gray-400">
             <a href="/jobs" className="hover:text-gray-600 transition-colors">Browse Jobs</a>

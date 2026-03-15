@@ -2,12 +2,16 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Stamp | Your career, verified",
-  description: "Every claim on your profile is confirmed by the source. No fake profiles. Just proof.",
+  title: "Stamp | Your career. Verified.",
+  description: "Every claim on your profile is verified by the source. No fake profiles. Just proof.",
   metadataBase: new URL("https://stampverified.com"),
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
-    title: "Stamp | Your career, verified",
-    description: "Every claim on your profile is confirmed by the source. No fake profiles. Just proof.",
+    title: "Stamp | Your career. Verified.",
+    description: "Every claim on your profile is verified by the source. No fake profiles. Just proof.",
     siteName: "Stamp",
     type: "website",
   },

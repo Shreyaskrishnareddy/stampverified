@@ -81,7 +81,7 @@ export default function EmployerLoginPage() {
       <div className="max-w-md mx-auto px-6 py-16">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
           <div className="bg-[#0A0A0A] px-8 py-6 text-center">
-            <span className="text-white font-bold text-lg">Stamp</span>
+            <img src="/logo-sm.png" alt="Stamp" className="w-7 h-7 mx-auto mb-1 invert brightness-200" /><span className="text-white font-bold text-lg">Stamp</span>
             <p className="text-gray-400 text-sm mt-1">Employer sign in</p>
           </div>
           <div className="p-8">
