@@ -99,7 +99,9 @@ export default function EmployerMessagesPage() {
       const detail = await api.getConversation(token, selectedConv.conversation.id);
       setSelectedConv(detail);
       loadConversations(token);
-    } catch { /* empty */ }
+    } catch {
+      alert("Failed to send message. Please try again.");
+    }
     setSending(false);
   };
 

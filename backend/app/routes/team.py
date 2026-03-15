@@ -132,9 +132,10 @@ async def invite_member(
         return {"detail": f"Re-invited {email}", "status": "invited"}
 
     # Create the invited member record
+    import uuid
     member_data = {
         "organization_id": org["id"],
-        "user_id": "00000000-0000-0000-0000-000000000000",  # placeholder until signup
+        "user_id": str(uuid.uuid4()),  # unique placeholder until signup replaces it
         "email": email,
         "role": "member",
         "can_post_jobs": invite.can_post_jobs,

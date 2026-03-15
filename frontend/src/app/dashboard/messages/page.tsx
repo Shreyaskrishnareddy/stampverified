@@ -102,11 +102,12 @@ export default function CandidateMessagesPage() {
     try {
       await api.sendMessage(token, selectedConv.conversation.id, newMessage.trim());
       setNewMessage("");
-      // Reload conversation
       const detail = await api.getConversation(token, selectedConv.conversation.id);
       setSelectedConv(detail);
       loadConversations(token);
-    } catch { /* empty */ }
+    } catch {
+      alert("Failed to send message. Please try again.");
+    }
     setSending(false);
   };
 
@@ -117,7 +118,9 @@ export default function CandidateMessagesPage() {
       const detail = await api.getConversation(token, selectedConv.conversation.id);
       setSelectedConv(detail);
       loadConversations(token);
-    } catch { /* empty */ }
+    } catch {
+      alert("Failed to decline. Please try again.");
+    }
   };
 
   if (loading) {

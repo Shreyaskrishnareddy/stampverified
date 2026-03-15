@@ -472,6 +472,7 @@ async def get_public_job(
         supabase.table("jobs")
         .select("*, organizations(name,domain,logo_url,website_url), job_functions(name,slug,category), company_members!jobs_poc_member_id_fkey(email)")
         .eq("id", job_id)
+        .in_("status", ["active", "closed", "filled"])
         .execute()
     )
 

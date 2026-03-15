@@ -230,7 +230,8 @@ async def update_employment_claim(
     # Determine effective org_id after potential re-link
     effective_org_id = update_data.get("organization_id", old_claim.get("organization_id"))
 
-    # If claim was verified or had corrections, reset verification
+    # If claim was in a reviewed state, reset verification
+    # Also promote awaiting_org → awaiting_verification if org is now linked
     if old_claim["status"] in ("verified", "correction_proposed", "disputed"):
         update_data["status"] = "awaiting_verification" if effective_org_id else "awaiting_org"
         update_data["verified_at"] = None
@@ -246,6 +247,11 @@ async def update_employment_claim(
             update_data["previous_dispute_reason"] = old_claim.get("disputed_reason")
         update_data["disputed_reason"] = None
         # Generate new verification token
+        new_token = generate_token()
+        update_data["verification_token"] = new_token
+    elif old_claim["status"] == "awaiting_org" and effective_org_id:
+        # Promote: org is now registered, move to awaiting_verification
+        update_data["status"] = "awaiting_verification"
         new_token = generate_token()
         update_data["verification_token"] = new_token
 
@@ -581,6 +587,10 @@ async def update_education_claim(
     update_data = {k: v for k, v in claim.model_dump().items() if v is not None}
     if "institution_domain" in update_data:
         update_data["institution_domain"] = update_data["institution_domain"].strip().lower()
+    # Serialize date fields to ISO format (same as employment claims)
+    for date_field in ("start_date", "end_date"):
+        if date_field in update_data and update_data[date_field]:
+            update_data[date_field] = update_data[date_field].isoformat()
 
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -612,6 +622,11 @@ async def update_education_claim(
         if old_claim["status"] == "disputed":
             update_data["previous_dispute_reason"] = old_claim.get("disputed_reason")
         update_data["disputed_reason"] = None
+        new_token = generate_token()
+        update_data["verification_token"] = new_token
+    elif old_claim["status"] == "awaiting_org" and effective_org_id:
+        # Promote: org is now registered, move to awaiting_verification
+        update_data["status"] = "awaiting_verification"
         new_token = generate_token()
         update_data["verification_token"] = new_token
 

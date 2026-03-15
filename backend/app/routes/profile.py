@@ -161,8 +161,20 @@ async def get_public_profile(username: str):
     )
     total_count = (all_emp.count or 0) + (all_edu.count or 0)
 
+    # Filter profile to public-safe fields only
+    p = profile.data[0]
+    public_profile = {
+        "id": p.get("id"),
+        "username": p.get("username"),
+        "full_name": p.get("full_name"),
+        "headline": p.get("headline"),
+        "location": p.get("location"),
+        "avatar_url": p.get("avatar_url"),
+        "created_at": p.get("created_at"),
+    }
+
     return {
-        "profile": profile.data[0],
+        "profile": public_profile,
         "employment": employment.data or [],
         "education": education.data or [],
         "verified_count": verified_count,

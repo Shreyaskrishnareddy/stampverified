@@ -297,10 +297,10 @@ export default function EmployerDashboard() {
                             <button onClick={() => handleVerify(claim.id as string, claimType)} disabled={submitting} className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50">
                               Verify
                             </button>
-                            <button onClick={() => setShowCorrect(claim.id as string)} className="px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                            <button onClick={() => { setShowCorrect(claim.id as string); setCorrections({}); setShowDispute(null); }} className="px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                               Correct
                             </button>
-                            <button onClick={() => setShowDispute(claim.id as string)} className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                            <button onClick={() => { setShowDispute(claim.id as string); setDisputeReason(""); setShowCorrect(null); }} className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                               Dispute
                             </button>
                           </div>
