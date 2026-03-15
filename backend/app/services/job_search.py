@@ -164,9 +164,9 @@ async def search_external_jobs(
     """
     settings = get_settings()
 
-    api_key = getattr(settings, "jsearch_api_key", "") or ""
+    api_key = settings.jsearch_api_key or ""
     if not api_key:
-        print("[JSEARCH] API key not configured")
+        print("[JSEARCH] API key not configured — check JSEARCH_API_KEY env var")
         return []
 
     # Rate limit check
