@@ -24,7 +24,7 @@ from app.config import get_supabase, get_settings
 router = APIRouter(prefix="/api/jobs", tags=["job-match"])
 
 
-@router.get("/match-debug")
+@router.get("/match/debug")
 async def match_debug():
     """Temporary debug endpoint to check JSearch config."""
     settings = get_settings()

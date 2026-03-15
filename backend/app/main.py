@@ -54,8 +54,8 @@ app.include_router(settings.router)
 app.include_router(organizations.router)
 app.include_router(employer.router)
 app.include_router(team.router)
-app.include_router(jobs.router)
 app.include_router(job_match.router)
+app.include_router(jobs.router)
 app.include_router(verify.router)
 
 # Company directory + requests
