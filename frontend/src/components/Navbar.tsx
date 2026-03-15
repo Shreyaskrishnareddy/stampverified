@@ -207,7 +207,7 @@ export default function Navbar() {
             <Link href="/companies" className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setShowMobileMenu(false)}>
               Companies
             </Link>
-            <Link href="/match-jobs" className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setShowMobileMenu(false)}>
+            <Link href="/jobs?tab=internet" className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setShowMobileMenu(false)}>
               Upload Resume
             </Link>
           </div>
