@@ -203,7 +203,7 @@ function JobsContent() {
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p className="text-gray-600 font-medium mb-1">No jobs found</p>
             <p className="text-sm text-gray-400">
-              {activeFilterCount > 0 ? "Try adjusting your filters." : "Check back soon — new jobs are posted daily."}
+              {activeFilterCount > 0 ? "Try adjusting your filters." : "Jobs appear here when verified companies post them."}
             </p>
           </div>
         ) : (

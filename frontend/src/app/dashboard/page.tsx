@@ -592,8 +592,8 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Claims grid */}
-        <div className="grid lg:grid-cols-2 gap-10">
+        {/* Claims grid — hidden until profile is created */}
+        {profile && <div className="grid lg:grid-cols-2 gap-10">
           {/* Employment */}
           <section className="animate-fade-in">
             <div className="flex items-center justify-between mb-5">
@@ -677,7 +677,7 @@ function DashboardContent() {
               </div>
             )}
           </section>
-        </div>
+        </div>}
       </div>
 
       {/* Profile creation/edit modal */}

@@ -131,7 +131,7 @@ export default function EmployerMessagesPage() {
             <div className="w-80 border-r border-gray-100 flex-shrink-0 overflow-y-auto">
               {conversations.length === 0 ? (
                 <div className="p-8 text-center">
-                  <p className="text-sm text-gray-400">No messages yet</p>
+                  <p className="text-sm text-gray-400">No messages yet. Messages appear here when candidates apply or you reach out.</p>
                   <Link href="/employer/talent" className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-block">Search talent to reach out</Link>
                 </div>
               ) : conversations.map(conv => (

@@ -149,7 +149,7 @@ export default function CandidateMessagesPage() {
             <div className="w-80 border-r border-gray-100 flex-shrink-0 overflow-y-auto">
               {conversations.length === 0 ? (
                 <div className="p-8 text-center">
-                  <p className="text-sm text-gray-400">No messages yet</p>
+                  <p className="text-sm text-gray-400">No messages yet. Messages appear here when you apply or receive outreach.</p>
                 </div>
               ) : conversations.map(conv => (
                 <button

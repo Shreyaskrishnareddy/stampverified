@@ -177,7 +177,7 @@ export default function Navbar() {
             <div className="flex items-center gap-3">
               <Link
                 href={isEmployerRoute ? "/for-employers/login" : "/?auth=signin"}
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition-all"
+                className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
               >
                 Sign in
               </Link>
