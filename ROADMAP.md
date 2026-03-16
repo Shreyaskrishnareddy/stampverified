@@ -1,7 +1,7 @@
 # Stamp — Product Roadmap
 
 > The implementation plan for the trust-first hiring platform.
-> Last updated: 2026-03-13
+> Last updated: 2026-03-15
 
 ---
 
@@ -57,18 +57,24 @@ Jobs only exist if posted by approved company members:
 ### Candidate Side
 - [x] Signup (Google OAuth + email/password)
 - [x] Profile creation (name, username, headline, location, avatar)
-- [x] Employment claims (Clearbit autocomplete, title, dates, department)
-- [x] Education claims (institution, degree, field, dates)
+- [x] Employment claims (company name or domain search, title, dates, department)
+- [x] Education claims (institution search with logos, degree, field, dates)
+- [x] Domain-first company search (type stripe.com → instant match with gold ✓)
 - [x] Claim lifecycle: awaiting_org → awaiting_verification → verified/correction_proposed/disputed/expired/permanently_locked
+- [x] Duration verification (dates + calculated duration shown prominently to verifiers)
+- [x] Date validation (end > start, not future, not before 1950)
 - [x] 5 dispute limit, 30-day expiry with one resend
 - [x] Public profile (confirmed claims only, shareable)
 - [x] Platform preferences (resume upload, job interests, open to work toggle)
-- [x] Jobs feed (browse, filter by function/location/type/level, search, sort by recent/relevant)
+- [x] Guided onboarding (claims grid hidden until profile created)
+- [x] Jobs feed with Stamp Jobs / Internet Jobs toggle
+- [x] Resume-to-jobs matching (upload PDF → extract skills/titles → JSearch API → matching jobs)
 - [x] Job detail page with apply flow (verification gate: 1+ confirmed claim + resume required)
 - [x] Save/bookmark jobs
 - [x] Applications tracking (status: applied → shortlisted → rejected)
 - [x] Messages (reply to outreach, message after applying, decline outreach)
 - [x] Notification preferences (per-event toggles for in-app + email)
+- [x] Smart redirect from job matching to signup with preserved context
 
 ### Company Side
 - [x] Company registration (Clearbit-only companies, role-based verifier email)
@@ -90,15 +96,22 @@ Jobs only exist if posted by approved company members:
 - [x] Employer settings (company details, verifier email, logo, password)
 
 ### Platform
-- [x] Homepage with toggle ("I'm looking for work" / "I'm hiring")
+- [x] Homepage with toggle ("I'm looking for work" / "I'm hiring") + hero demo card
+- [x] Tagline: "Your career. Verified."
 - [x] Companies directory (searchable, with job counts)
 - [x] Company pages (logo, name, ✓, website, member since, employee count, active jobs)
 - [x] Company request flow (for companies not in Clearbit)
+- [x] Resume-to-jobs matching via JSearch API (Google Jobs aggregator)
+- [x] Query+location caching (1hr TTL), resume quality validation, IP rate limiting (15/hr), monthly quota guardrail
+- [x] Stamp Jobs vs Internet Jobs sections (gold ✓ jobs above, external jobs below)
 - [x] Email notifications (verification, application status, messages, outreach — via Resend)
 - [x] In-app notifications with unread count
-- [x] Full account deletion (atomic PostgreSQL function)
-- [x] Blue ✓ (candidates, claims, companies) + Gold ✓ (approved hiring team members)
-- [x] 141 tests passing
+- [x] Full account deletion (atomic PostgreSQL function, covers all tables)
+- [x] Blue ✓ (candidates, individual claims) + Gold ✓ (companies, hiring team members)
+- [x] Custom logo (stamp fold icon) across all surfaces + favicon
+- [x] Mobile hamburger menu (Jobs, For Employers, Companies, Upload Resume)
+- [x] Consistent empty states across all pages
+- [x] 173 tests passing
 
 ### Security
 - [x] JWT auth with JWKS (ES256, 1-hour TTL cache)
@@ -110,16 +123,24 @@ Jobs only exist if posted by approved company members:
 - [x] Typed confirmation required for account deletion
 - [x] HMAC secret runtime check (no hardcoded defaults)
 - [x] Resume in private storage (signed URLs for access control)
+- [x] Org registration validates DNS + registrant email domain match
+- [x] Draft/paused jobs hidden from public access
+- [x] Public profile filters sensitive fields (no notification_preferences leak)
+- [x] POC name visibility: verified candidates always see recruiter identity
+- [x] JSearch API rate limiting (15/hr per IP) + monthly quota guardrail (450 limit)
 
 ---
 
 ## What's Next (v1.1)
 
 ### Pre-Launch
-- [ ] Run migrations 003-008 on Supabase
-- [ ] Deploy to Vercel + Render
+- [x] Run migrations 003-008 on Supabase
+- [x] Deploy to Vercel + Render
+- [x] JSearch API configured and working
 - [ ] End-to-end test with real accounts
-- [ ] First 5 real confirmed profiles
+- [ ] First 5 real verified profiles
+- [ ] File trademarks (Stamp, StampVerified)
+- [ ] Make GitHub repo private (protect trade secrets)
 
 ### Technical Debt
 - [ ] Postgres full-text search for jobs (replace post-query text filter)
@@ -130,6 +151,7 @@ Jobs only exist if posted by approved company members:
 - [ ] Debounce on jobs search input
 - [ ] Closed job applications still accessible
 - [ ] Reopen/reactivate closed jobs from UI
+- [ ] Integrate with Finch/Merge APIs for programmatic verification
 
 ### Growth Features
 - [ ] "Sign in with Stamp" for third-party integrations

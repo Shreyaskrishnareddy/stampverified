@@ -588,18 +588,36 @@ stampverified/
 │   ├── .env.example
 │   ├── requirements.txt
 │   ├── migrations/
-│   │   └── 001_productmap_updates.sql
+│   │   ├── 001_initial_schema.sql
+│   │   ├── 001_productmap_updates.sql
+│   │   ├── 002_education_dates.sql
+│   │   ├── 003_company_workspaces.sql
+│   │   ├── 004_jobs.sql
+│   │   ├── 005_applications.sql
+│   │   ├── 006_messaging.sql
+│   │   ├── 007_polish.sql
+│   │   └── 008_fix_delete_function.sql
 │   ├── tests/
-│   │   └── test_verification_state_machine.py   # 33 tests
+│   │   ├── test_verification_state_machine.py
+│   │   ├── test_company_workspaces.py
+│   │   ├── test_jobs.py
+│   │   ├── test_applications.py
+│   │   ├── test_messaging.py
+│   │   ├── test_url_import.py
+│   │   └── test_resume_parser.py
 │   └── app/
 │       ├── main.py                  # FastAPI app, CORS, routes
 │       ├── config.py                # Settings (env vars, Supabase client)
 │       ├── middleware/
-│       │   └── auth.py              # JWT auth (ES256/JWKS)
+│       │   └── auth.py              # JWT auth (ES256/JWKS) + company member auth
 │       ├── models/
 │       │   ├── profile.py
 │       │   ├── claims.py
 │       │   ├── organization.py
+│       │   ├── company_member.py
+│       │   ├── job.py
+│       │   ├── application.py
+│       │   ├── conversation.py
 │       │   └── notification.py
 │       ├── routes/
 │       │   ├── profile.py           # Profile CRUD
@@ -607,16 +625,27 @@ stampverified/
 │       │   ├── verify.py            # Token-based verification (no login)
 │       │   ├── organizations.py     # Org registration + validation
 │       │   ├── employer.py          # Employer dashboard
+│       │   ├── team.py              # Company workspace management
+│       │   ├── jobs.py              # Job posting + public feed
+│       │   ├── job_match.py         # Resume-to-jobs matching (JSearch)
+│       │   ├── applications.py      # Apply flow + saved jobs
+│       │   ├── messaging.py         # Conversations + talent search
+│       │   ├── companies.py         # Company directory + requests
 │       │   ├── notifications.py     # Notification management
 │       │   ├── invite.py            # HMAC-signed invite links
 │       │   ├── settings.py          # Password + atomic account deletion
-│       │   ├── lookup.py            # Clearbit + HIPO search
-│       │   └── cron.py              # Claim expiry automation
+│       │   ├── lookup.py            # Clearbit + university search
+│       │   └── cron.py              # Claim + job expiry automation
 │       └── services/
-│           ├── email.py             # Resend (Stripe-receipt style)
-│           ├── notifications.py     # In-app notification creation
-│           ├── storage.py           # Supabase Storage (avatars, logos)
-│           └── trust_score.py       # Deprecated
+│           ├── email.py             # Resend (6 email templates)
+│           ├── notifications.py     # Preference-aware notifications
+│           ├── storage.py           # Supabase Storage (avatars, logos, resumes)
+│           ├── job_functions.py     # Auto-detection from titles
+│           ├── jd_extract.py        # JD text extraction (regex)
+│           ├── url_import.py        # ATS URL import (JSON-LD)
+│           ├── job_search.py        # JSearch API (cached, rate-limited)
+│           ├── resume_parser.py     # Resume PDF parsing
+│           └── talent_search.py     # Candidate search engine
 │
 └── frontend/
     ├── package.json
@@ -626,29 +655,42 @@ stampverified/
         │   ├── supabase.ts          # Supabase client
         │   └── api.ts               # Backend API client
         ├── components/
-        │   ├── ClaimCard.tsx
-        │   ├── StatusBadge.tsx
-        │   ├── CompanyAutocomplete.tsx   # Clearbit only, no manual entry
-        │   ├── UniversityAutocomplete.tsx
+        │   ├── ClaimCard.tsx         # Employment/education cards with duration
+        │   ├── StatusBadge.tsx       # Blue ✓ filled badge for verified
+        │   ├── CompanyAutocomplete.tsx   # Name or domain search, gold ✓ for Stamp companies
+        │   ├── UniversityAutocomplete.tsx  # With favicon logos
         │   ├── NotificationBell.tsx
-        │   └── Navbar.tsx            # Role-aware (employer vs candidate)
+        │   └── Navbar.tsx            # Role-aware + mobile hamburger menu
         └── app/
-            ├── layout.tsx
-            ├── page.tsx             # Landing page + auth modal
-            ├── auth/callback/       # OAuth/email redirect handler
+            ├── layout.tsx            # Favicon, apple-touch-icon, meta
+            ├── page.tsx              # Landing page + toggle + hero card
+            ├── auth/callback/        # OAuth/email redirect handler
             ├── dashboard/
-            │   ├── page.tsx         # User dashboard + profile creation
-            │   └── settings/        # Password, delete account
+            │   ├── page.tsx          # User dashboard + guided onboarding
+            │   ├── settings/         # Password, notifications, delete account
+            │   ├── applications/     # My applications tracking
+            │   └── messages/         # Candidate messaging
             ├── employer/
-            │   ├── dashboard/       # Org admin: pending claims, employees
-            │   └── settings/        # Org name, email, logo, password
-            ├── verify/[token]/      # Verification page (no login)
-            ├── [username]/          # Public profile
-            ├── invite/[code]/       # Invite landing page
+            │   ├── dashboard/        # Claims, employees, quick actions
+            │   ├── settings/         # Org name, email, logo, password
+            │   ├── team/             # Workspace member management
+            │   ├── jobs/             # Job posting + management
+            │   ├── jobs/new/         # Paste-first job posting
+            │   ├── applications/     # Application review + matching
+            │   ├── talent/           # Talent search + outreach
+            │   └── messages/         # Employer messaging
+            ├── jobs/                 # Stamp Jobs / Internet Jobs toggle
+            ├── jobs/[id]/            # Job detail + apply flow
+            ├── companies/            # Company directory
+            ├── companies/[domain]/   # Company page + jobs
+            ├── match-jobs/           # Standalone resume matching
+            ├── verify/[token]/       # Verification page (no login)
+            ├── [username]/           # Public profile
+            ├── invite/[code]/        # Invite landing page
             └── for-employers/
-                ├── page.tsx         # For Employers/Individuals toggle
-                ├── register/        # Single-form org registration
-                └── login/           # Organization sign in
+                ├── page.tsx          # For Employers marketing
+                ├── register/         # Smart company registration/join
+                └── login/            # Employer sign in
 ```
 
 ---
@@ -703,6 +745,7 @@ python -m pytest tests/ -v
 | `ENVIRONMENT` | `development` or `production` |
 | `INVITE_HMAC_SECRET` | Secret for signing invite links |
 | `CRON_SECRET` | Auth token for cron endpoints |
+| `JSEARCH_API_KEY` | RapidAPI key for JSearch (job matching) |
 
 **Frontend (.env.local):**
 
