@@ -48,17 +48,23 @@ async def get_pending_claims(user: dict = Depends(get_current_company_member)):
         .execute()
     )
 
-    # Enrich with claimer names (just name, not full profile — Q43)
+    # Enrich with claimer profile info
     claims = []
     for claim in (employment.data or []):
-        profile = supabase.table("profiles").select("full_name").eq("id", claim["user_id"]).execute()
-        claim["claimer_name"] = profile.data[0]["full_name"] if profile.data else "Unknown"
+        profile = supabase.table("profiles").select("full_name,avatar_url,username").eq("id", claim["user_id"]).execute()
+        p = profile.data[0] if profile.data else {}
+        claim["claimer_name"] = p.get("full_name", "Unknown")
+        claim["claimer_avatar"] = p.get("avatar_url")
+        claim["claimer_username"] = p.get("username")
         claim["claim_type"] = "employment"
         claims.append(claim)
 
     for claim in (education.data or []):
-        profile = supabase.table("profiles").select("full_name").eq("id", claim["user_id"]).execute()
-        claim["claimer_name"] = profile.data[0]["full_name"] if profile.data else "Unknown"
+        profile = supabase.table("profiles").select("full_name,avatar_url,username").eq("id", claim["user_id"]).execute()
+        p = profile.data[0] if profile.data else {}
+        claim["claimer_name"] = p.get("full_name", "Unknown")
+        claim["claimer_avatar"] = p.get("avatar_url")
+        claim["claimer_username"] = p.get("username")
         claim["claim_type"] = "education"
         claims.append(claim)
 
@@ -94,14 +100,20 @@ async def get_verified_employees(user: dict = Depends(get_current_company_member
 
     employees = []
     for claim in (employment.data or []):
-        profile = supabase.table("profiles").select("full_name").eq("id", claim["user_id"]).execute()
-        claim["claimer_name"] = profile.data[0]["full_name"] if profile.data else "Unknown"
+        profile = supabase.table("profiles").select("full_name,avatar_url,username").eq("id", claim["user_id"]).execute()
+        p = profile.data[0] if profile.data else {}
+        claim["claimer_name"] = p.get("full_name", "Unknown")
+        claim["claimer_avatar"] = p.get("avatar_url")
+        claim["claimer_username"] = p.get("username")
         claim["claim_type"] = "employment"
         employees.append(claim)
 
     for claim in (education.data or []):
-        profile = supabase.table("profiles").select("full_name").eq("id", claim["user_id"]).execute()
-        claim["claimer_name"] = profile.data[0]["full_name"] if profile.data else "Unknown"
+        profile = supabase.table("profiles").select("full_name,avatar_url,username").eq("id", claim["user_id"]).execute()
+        p = profile.data[0] if profile.data else {}
+        claim["claimer_name"] = p.get("full_name", "Unknown")
+        claim["claimer_avatar"] = p.get("avatar_url")
+        claim["claimer_username"] = p.get("username")
         claim["claim_type"] = "education"
         employees.append(claim)
 

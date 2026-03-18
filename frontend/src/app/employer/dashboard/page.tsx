@@ -8,7 +8,7 @@ import Navbar from "@/components/Navbar";
 import StatusBadge from "@/components/StatusBadge";
 
 type Claim = Record<string, unknown>;
-type Org = { name: string; domain: string; org_type: string; is_domain_verified: boolean };
+type Org = { name: string; domain: string; org_type: string; is_domain_verified: boolean; logo_url?: string };
 type Member = { role: string; can_post_jobs: boolean; can_verify_claims: boolean };
 type Toast = { id: number; message: string; type: "success" | "error" };
 
@@ -48,7 +48,7 @@ export default function EmployerDashboard() {
     try {
       const memberData = await api.getMyMembership(accessToken);
       setMember(memberData);
-      setOrg({ name: memberData.org_name, domain: memberData.org_domain, org_type: "company", is_domain_verified: memberData.is_domain_verified || false });
+      setOrg({ name: memberData.org_name, domain: memberData.org_domain, org_type: "company", is_domain_verified: memberData.is_domain_verified || false, logo_url: memberData.org_logo_url || undefined });
     } catch {
       router.push("/for-employers");
       return;
@@ -141,7 +141,13 @@ export default function EmployerDashboard() {
         {/* Header */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
+            <div className="flex items-center gap-4">
+              {(org?.logo_url || org?.domain) && (
+                <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                  <img src={org.logo_url || `https://www.google.com/s2/favicons?sz=128&domain=${org.domain}`} alt="" className="w-full h-full object-contain" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                </div>
+              )}
+              <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-gray-900">{org?.name}</h1>
                 {org?.is_domain_verified && (
@@ -149,6 +155,7 @@ export default function EmployerDashboard() {
                 )}
               </div>
               <p className="text-sm text-gray-500">{org?.domain} &middot; {org?.org_type}</p>
+              </div>
             </div>
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-4 sm:gap-6 text-center">
@@ -253,6 +260,14 @@ export default function EmployerDashboard() {
               return (
                 <div key={claim.id as string} className="bg-white rounded-2xl border border-gray-200 p-6">
                   <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-start gap-3">
+                      {claim.claimer_avatar ? (
+                        <img src={claim.claimer_avatar as string} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-blue-700">{(claim.claimer_name as string || "?")[0]?.toUpperCase()}</span>
+                        </div>
+                      )}
                     <div>
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <p className="font-semibold text-gray-900">{claim.claimer_name as string || "Unknown user"}</p>
@@ -279,6 +294,7 @@ export default function EmployerDashboard() {
                           </p>
                         </div>
                       )}
+                    </div>
                     </div>
                   </div>
 
@@ -359,13 +375,22 @@ export default function EmployerDashboard() {
             ) : employees.map(emp => (
               <div key={emp.id as string} className="bg-white rounded-2xl border border-emerald-200 p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {emp.claimer_avatar ? (
+                      <img src={emp.claimer_avatar as string} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-emerald-700">{(emp.claimer_name as string || "?")[0]?.toUpperCase()}</span>
+                      </div>
+                    )}
+                    <div className="min-w-0">
                     <p className="font-semibold text-gray-900 truncate">{emp.claimer_name as string || "Employee"}</p>
                     <p className="text-sm text-gray-600 truncate">{emp.title as string}</p>
                     <p className="text-xs text-gray-400 mt-1">
                       {emp.start_date ? formatDate(emp.start_date as string) : ""}
                       {emp.is_current ? " — Present" : emp.end_date ? ` — ${formatDate(emp.end_date as string)}` : ""}
                     </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <StatusBadge status="verified" />

@@ -12,10 +12,12 @@ type MemberInfo = {
   can_verify_claims: boolean;
   org_name: string;
   org_domain: string;
+  org_logo_url?: string;
 };
 
 export default function Navbar() {
   const [user, setUser] = useState<{ email: string } | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [member, setMember] = useState<MemberInfo | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -27,6 +29,14 @@ export default function Navbar() {
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session?.user) {
         setUser({ email: data.session.user.email || "" });
+        // Get avatar from Google OAuth metadata or Stamp profile
+        const metaAvatar = data.session.user.user_metadata?.avatar_url;
+        try {
+          const profile = await api.getMyProfile(data.session.access_token);
+          setAvatarUrl(profile.avatar_url || metaAvatar || null);
+        } catch {
+          setAvatarUrl(metaAvatar || null);
+        }
         try {
           const membership = await api.getMyMembership(data.session.access_token);
           setMember(membership);
@@ -36,9 +46,10 @@ export default function Navbar() {
       } else {
         setUser(null);
         setMember(null);
+        setAvatarUrl(null);
       }
     });
-  }, [pathname]);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -98,9 +109,15 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors overflow-hidden"
                 >
-                  {user.email[0]?.toUpperCase()}
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  ) : member?.org_logo_url ? (
+                    <img src={member.org_logo_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    user.email[0]?.toUpperCase()
+                  )}
                 </button>
                 {showDropdown && (
                   <>
