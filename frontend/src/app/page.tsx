@@ -168,7 +168,8 @@ function LandingContent() {
       {/* ─── HERO ─── */}
       <section className="relative min-h-screen flex items-center justify-center pt-14">
         <div className="absolute inset-0 -z-10">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[900px] bg-gradient-to-b from-blue-50/50 via-blue-50/20 to-transparent rounded-full blur-[120px]" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1400px] h-[1000px] bg-gradient-to-b from-blue-50/60 via-indigo-50/20 to-transparent rounded-full blur-[140px]" />
+          <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-gradient-to-tl from-blue-50/40 to-transparent rounded-full blur-[100px]" />
         </div>
 
         <div className="max-w-5xl mx-auto px-6 text-center">
@@ -224,7 +225,7 @@ function LandingContent() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-bold text-gray-900">Sarah Martinez</h3>
-                          <BlueTick className="w-5 h-5" />
+                          <BlueTick className="w-5 h-5 verified-glow" />
                         </div>
                         <p className="text-sm text-gray-500">Product Lead at Notion</p>
                       </div>
@@ -275,7 +276,7 @@ function LandingContent() {
                       <h3 className="font-bold text-gray-900">Senior Software Engineer</h3>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <p className="text-sm text-gray-500">Acme Corp</p>
-                        <GoldTick className="w-4 h-4" />
+                        <GoldTick className="w-4 h-4 verified-gold-glow" />
                       </div>
                     </div>
                   </div>
@@ -325,12 +326,12 @@ function LandingContent() {
 
           <div className="mt-16 grid md:grid-cols-3 gap-6">
             {[
-              { icon: <BlueTick className="w-8 h-8" />, title: "Verified Candidates", desc: "Every claim on a candidate's profile is verified by the source employer or university. Not self-reported." },
-              { icon: <GoldTick className="w-8 h-8" />, title: "Verified Companies", desc: "Every company on Stamp is domain-verified with a real team behind it. No ghost companies, no scams." },
-              { icon: <GoldTick className="w-8 h-8" />, title: "Verified Hiring Teams", desc: "Every recruiter is an approved member of a verified company. You always know who you're talking to." },
+              { icon: <BlueTick className="w-8 h-8 verified-glow" />, title: "Verified Candidates", desc: "Every claim on a candidate's profile is verified by the source employer or university. Not self-reported.", accent: "blue" },
+              { icon: <GoldTick className="w-8 h-8 verified-gold-glow" />, title: "Verified Companies", desc: "Every company on Stamp is domain-verified with a real team behind it. No ghost companies, no scams.", accent: "amber" },
+              { icon: <GoldTick className="w-8 h-8 verified-gold-glow" />, title: "Verified Hiring Teams", desc: "Every recruiter is an approved member of a verified company. You always know who you're talking to.", accent: "amber" },
             ].map((item) => (
               <Section key={item.title}>
-                <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 transition-all h-full">
+                <div className={`rounded-2xl p-8 border transition-all h-full hover:shadow-lg hover:-translate-y-0.5 ${item.accent === "blue" ? "bg-gradient-to-br from-blue-50/50 to-white border-blue-100 hover:border-blue-200" : "bg-gradient-to-br from-amber-50/30 to-white border-amber-100/60 hover:border-amber-200"}`}>
                   <div className="mb-5">{item.icon}</div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
                   <p className="text-[15px] text-gray-500 leading-relaxed">{item.desc}</p>
@@ -393,7 +394,8 @@ function LandingContent() {
 
       {/* ─── STATS ─── */}
       <section className="relative py-24 px-6 bg-[#0A0A0A] text-white overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-500/8 rounded-full blur-[150px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-500/10 rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[300px] bg-indigo-500/5 rounded-full blur-[120px]" />
         <div className="max-w-5xl mx-auto relative z-10">
           <Section>
             <div className="text-center mb-16">
@@ -470,16 +472,22 @@ function LandingContent() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer className="border-t border-gray-100 py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img src="/logo-sm.png" alt="Stamp" className="w-6 h-6" />
-            <span className="text-lg font-bold tracking-tight text-[#0A0A0A]">Stamp</span>
+      <footer className="border-t border-gray-200 bg-gray-50 py-12 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <img src="/logo-sm.png" alt="Stamp" className="w-6 h-6" />
+              <span className="text-lg font-bold tracking-tight text-[#0A0A0A] font-display">Stamp</span>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-gray-400">
+              <Link href="/jobs" className="hover:text-gray-600 transition-colors">Jobs</Link>
+              <Link href="/companies" className="hover:text-gray-600 transition-colors">Companies</Link>
+              <Link href="/for-employers" className="hover:text-gray-600 transition-colors">For Employers</Link>
+            </div>
           </div>
-          <div className="flex items-center gap-6 text-sm text-gray-400">
-            <Link href="/jobs" className="hover:text-gray-600 transition-colors">Jobs</Link>
-            <Link href="/companies" className="hover:text-gray-600 transition-colors">Companies</Link>
-            <Link href="/for-employers" className="hover:text-gray-600 transition-colors">For Employers</Link>
+          <div className="mt-8 pt-6 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-gray-400">Your career. Verified.</p>
+            <p className="text-xs text-gray-300">&copy; {new Date().getFullYear()} Stamp. All rights reserved.</p>
           </div>
         </div>
       </footer>

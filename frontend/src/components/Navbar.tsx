@@ -64,9 +64,9 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/60">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2 group">
           <img src="/logo-sm.png" alt="Stamp" className="w-7 h-7" />
-          <span className="text-lg font-bold tracking-tight text-[#0A0A0A]">Stamp</span>
+          <span className="text-lg font-bold tracking-tight text-[#0A0A0A] font-display">Stamp</span>
         </Link>
 
         {/* Right side */}

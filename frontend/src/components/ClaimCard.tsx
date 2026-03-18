@@ -91,7 +91,7 @@ export function EmploymentCard({
   const v = claim.status === "verified";
 
   return (
-    <div className={`group relative bg-white rounded-xl p-5 border transition-all duration-200 hover:shadow-sm ${v ? "border-emerald-200" : "border-gray-200"}`}>
+    <div className={`group relative rounded-xl p-5 border transition-all duration-200 hover:shadow-sm ${v ? "bg-gradient-to-r from-emerald-50/50 to-white border-emerald-200" : "bg-white border-gray-200"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex gap-3 min-w-0 flex-1">
           <CompanyLogo name={claim.company_name} domain={claim.company_domain} />
