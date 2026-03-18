@@ -65,7 +65,7 @@ export default function PublicProfile() {
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Header card */}
         <div className="animate-fade-in bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-10">
-          <div className="h-20 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900" />
+          <div className="h-24 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600" />
           <div className="px-8 pb-8 -mt-8">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
               <div className="flex items-end gap-4">
