@@ -35,6 +35,7 @@ type ConversationDetail = {
     id: string;
     type: string;
     status: string;
+    organization_id: string;
     job: { id: string; title: string; salary_min: number; salary_max: number; salary_currency: string; location: string; location_type: string } | null;
     org_name: string;
     org_domain: string;
