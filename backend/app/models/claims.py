@@ -80,6 +80,7 @@ class EmploymentClaimResponse(BaseModel):
     status: str
     verified_at: Optional[datetime] = None
     verified_by_org: Optional[str] = None
+    token_expires_at: Optional[datetime] = None
     expired_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -142,6 +143,7 @@ class EducationClaimResponse(BaseModel):
     status: str
     verified_at: Optional[datetime] = None
     verified_by_org: Optional[str] = None
+    token_expires_at: Optional[datetime] = None
     expired_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

@@ -127,7 +127,7 @@ def make_org(**overrides):
         "verifier_email": "hr@acme.com",
         "verifier_name": "HR Team",
         "logo_url": None,
-        "is_domain_verified": False,
+        "is_domain_verified": True,
     }
     org.update(overrides)
     return org
@@ -337,7 +337,7 @@ class TestAwaitingToCorrection:
 
         correction = CorrectAndVerifyAction(
             corrected_title="Senior Software Engineer",
-            reason="Title was incorrect",
+            correction_reason="Title was incorrect",
         )
 
         result = await correct_claim_by_token(token, correction)
@@ -672,13 +672,17 @@ class TestOrgRegistrationValidation:
         with pytest.raises(HTTPException) as exc_info:
             _validate_role_based_email("john@acme.com", "acme.com")
         assert exc_info.value.status_code == 400
-        assert "role-based" in exc_info.value.detail
+        assert "organizational" in exc_info.value.detail.lower() or "personal" in exc_info.value.detail.lower()
 
         with pytest.raises(HTTPException):
             _validate_role_based_email("sarah.smith@acme.com", "acme.com")
 
+        # ceo@ is now accepted (authority prefix)
+        _validate_role_based_email("ceo@acme.com", "acme.com")  # should NOT raise
+
+        # But truly personal names are still rejected
         with pytest.raises(HTTPException):
-            _validate_role_based_email("ceo@acme.com", "acme.com")
+            _validate_role_based_email("mike.jones@acme.com", "acme.com")
 
     def test_wrong_domain_rejected(self):
         from app.routes.organizations import _validate_role_based_email

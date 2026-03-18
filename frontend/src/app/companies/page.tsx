@@ -95,7 +95,7 @@ export default function CompaniesPage() {
                         <span className="text-blue-600 font-medium">{company.active_job_count} open role{company.active_job_count !== 1 ? "s" : ""}</span>
                       )}
                       {company.verified_employee_count > 0 && (
-                        <span>{company.verified_employee_count} confirmed</span>
+                        <span>{company.verified_employee_count} verified</span>
                       )}
                     </div>
                   </div>

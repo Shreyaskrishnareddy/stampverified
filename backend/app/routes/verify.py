@@ -2,13 +2,28 @@ from fastapi import APIRouter, HTTPException
 from app.models.claims import CorrectAndVerifyAction, DisputeAction
 from app.config import get_supabase
 from app.services.notifications import notify_user
+from app.services.audit import log_action
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/api/verify", tags=["verification"])
 
 
+def _is_token_expired(claim: dict) -> bool:
+    """Check if a verification token has expired."""
+    expires_at = claim.get("token_expires_at")
+    if not expires_at:
+        return False  # No expiry set (legacy tokens) — allow
+    if isinstance(expires_at, str):
+        # Handle ISO format with timezone
+        expires_at = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    return datetime.now(timezone.utc) > expires_at
+
+
 def _find_claim_by_token(token: str) -> tuple[dict, str]:
-    """Find a claim by verification token. Returns (claim, table_name)."""
+    """Find a claim by verification token. Returns (claim, table_name).
+
+    Also checks token expiry — expired tokens are rejected.
+    """
     supabase = get_supabase()
 
     employment = (
@@ -18,7 +33,10 @@ def _find_claim_by_token(token: str) -> tuple[dict, str]:
         .execute()
     )
     if employment.data:
-        return employment.data[0], "employment_claims"
+        claim = employment.data[0]
+        if _is_token_expired(claim):
+            raise HTTPException(status_code=410, detail="This verification link has expired. The candidate can request a new one from their dashboard.")
+        return claim, "employment_claims"
 
     education = (
         supabase.table("education_claims")
@@ -27,20 +45,32 @@ def _find_claim_by_token(token: str) -> tuple[dict, str]:
         .execute()
     )
     if education.data:
-        return education.data[0], "education_claims"
+        claim = education.data[0]
+        if _is_token_expired(claim):
+            raise HTTPException(status_code=410, detail="This verification link has expired. The candidate can request a new one from their dashboard.")
+        return claim, "education_claims"
 
     raise HTTPException(status_code=404, detail="Verification link not found or expired")
 
 
-def _get_org_for_claim(claim: dict) -> dict:
-    """Look up the organization linked to a claim."""
+def _get_org_for_claim(claim: dict, require_verified: bool = False) -> dict:
+    """Look up the organization linked to a claim.
+
+    If require_verified=True, also checks is_domain_verified.
+    """
     if not claim.get("organization_id"):
         raise HTTPException(status_code=400, detail="This claim is not linked to an organization")
     supabase = get_supabase()
     result = supabase.table("organizations").select("*").eq("id", claim["organization_id"]).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Organization not found")
-    return result.data[0]
+    org = result.data[0]
+    if require_verified and not org.get("is_domain_verified"):
+        raise HTTPException(
+            status_code=403,
+            detail="This organization's domain has not been verified. Verification actions are disabled until domain verification is complete."
+        )
+    return org
 
 
 @router.get("/{token}")
@@ -96,7 +126,7 @@ async def get_claim_for_verification(token: str):
 async def verify_claim_by_token(token: str):
     """Verify a claim. No login required — token is the auth."""
     claim, table_name = _find_claim_by_token(token)
-    org = _get_org_for_claim(claim)
+    org = _get_org_for_claim(claim, require_verified=True)
 
     if claim["status"] != "awaiting_verification":
         raise HTTPException(status_code=400, detail="This claim is not awaiting verification")
@@ -108,6 +138,14 @@ async def verify_claim_by_token(token: str):
         "verified_by_org": org["name"],
         "verification_token": None,
     }).eq("id", claim["id"]).execute()
+
+    log_action(
+        action="verified",
+        resource_type="claim",
+        resource_id=claim["id"],
+        actor_type="system",
+        metadata={"table": table_name, "org_name": org["name"], "via": "token"},
+    )
 
     notify_user(
         user_id=claim["user_id"],
@@ -127,7 +165,7 @@ async def correct_claim_by_token(
 ):
     """Propose corrections. No login required — token is the auth."""
     claim, table_name = _find_claim_by_token(token)
-    org = _get_org_for_claim(claim)
+    org = _get_org_for_claim(claim, require_verified=True)
 
     if claim["status"] != "awaiting_verification":
         raise HTTPException(status_code=400, detail="This claim is not awaiting verification")
@@ -161,6 +199,14 @@ async def correct_claim_by_token(
     update_data["verification_token"] = None
     supabase.table(table_name).update(update_data).eq("id", claim["id"]).execute()
 
+    log_action(
+        action="correction_proposed",
+        resource_type="claim",
+        resource_id=claim["id"],
+        actor_type="system",
+        metadata={"table": table_name, "org_name": org["name"], "via": "token"},
+    )
+
     notify_user(
         user_id=claim["user_id"],
         type="correction_proposed",
@@ -183,7 +229,7 @@ async def dispute_claim_by_token(
     Tracks dispute_count. After 5 disputes, claim is permanently locked.
     """
     claim, table_name = _find_claim_by_token(token)
-    org = _get_org_for_claim(claim)
+    org = _get_org_for_claim(claim, require_verified=True)
 
     if claim["status"] != "awaiting_verification":
         raise HTTPException(status_code=400, detail="This claim is not awaiting verification")
@@ -198,6 +244,14 @@ async def dispute_claim_by_token(
             "dispute_count": new_dispute_count,
             "verification_token": None,
         }).eq("id", claim["id"]).execute()
+
+        log_action(
+            action="claim_permanently_locked",
+            resource_type="claim",
+            resource_id=claim["id"],
+            actor_type="system",
+            metadata={"table": table_name, "org_name": org["name"], "dispute_count": new_dispute_count, "via": "token"},
+        )
 
         notify_user(
             user_id=claim["user_id"],
@@ -216,6 +270,14 @@ async def dispute_claim_by_token(
         "dispute_count": new_dispute_count,
         "verification_token": None,
     }).eq("id", claim["id"]).execute()
+
+    log_action(
+        action="disputed",
+        resource_type="claim",
+        resource_id=claim["id"],
+        actor_type="system",
+        metadata={"table": table_name, "org_name": org["name"], "reason": dispute.reason, "dispute_count": new_dispute_count, "via": "token"},
+    )
 
     notify_user(
         user_id=claim["user_id"],

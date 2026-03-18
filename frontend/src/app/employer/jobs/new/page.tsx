@@ -350,7 +350,7 @@ export default function NewJobPage() {
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-700">Show contact name publicly</span>
-                    <p className="text-xs text-gray-400">If off, job shows company name only. Candidates with confirmed claims always see the contact.</p>
+                    <p className="text-xs text-gray-400">If off, job shows company name only. Candidates with verified claims always see the contact.</p>
                   </div>
                 </label>
               </div>

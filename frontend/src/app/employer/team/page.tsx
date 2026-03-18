@@ -138,6 +138,29 @@ export default function TeamPage() {
     }
   };
 
+  const handleApprove = async (memberId: string, email: string) => {
+    if (!token) return;
+    try {
+      await api.approveMember(token, memberId);
+      addToast(`${email} approved`);
+      loadData(token);
+    } catch (err: unknown) {
+      addToast((err as Error).message, "error");
+    }
+  };
+
+  const handleDeny = async (memberId: string, email: string) => {
+    if (!token) return;
+    if (!confirm(`Deny ${email}'s request to join?`)) return;
+    try {
+      await api.denyMember(token, memberId);
+      addToast(`${email} denied`);
+      loadData(token);
+    } catch (err: unknown) {
+      addToast((err as Error).message, "error");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAFA]">
@@ -150,6 +173,7 @@ export default function TeamPage() {
   }
 
   const activeMembers = members.filter(m => m.status === "active");
+  const pendingMembers = members.filter(m => m.status === "pending");
   const invitedMembers = members.filter(m => m.status === "invited");
 
   return (
@@ -335,6 +359,43 @@ export default function TeamPage() {
           ))}
         </div>
 
+        {/* Pending join requests */}
+        {pendingMembers.length > 0 && (
+          <>
+            <h3 className="text-sm font-bold text-amber-600 uppercase tracking-wide mt-8 mb-3">
+              Pending Approval ({pendingMembers.length})
+            </h3>
+            <div className="space-y-3">
+              {pendingMembers.map(member => (
+                <div key={member.id} className="bg-amber-50/50 rounded-2xl border border-amber-200 p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">{member.email}</p>
+                      <p className="text-xs text-amber-700 mt-0.5">Requested to join via domain match</p>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleApprove(member.id, member.email)}
+                          className="text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleDeny(member.id, member.email)}
+                          className="text-xs font-medium text-red-600 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                        >
+                          Deny
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Pending invites */}
         {invitedMembers.length > 0 && (
           <>
@@ -372,8 +433,9 @@ export default function TeamPage() {
         <div className="mt-8 bg-gray-50 rounded-2xl border border-gray-100 p-6">
           <h3 className="text-sm font-bold text-gray-700 mb-2">How people join your workspace</h3>
           <ul className="text-sm text-gray-500 space-y-1.5">
-            <li>Anyone with an @{membership?.org_domain} email can sign up and auto-join.</li>
-            <li>New members start with no permissions until you grant them.</li>
+            <li>Anyone with an @{membership?.org_domain} email can request to join.</li>
+            <li>Join requests require admin approval before access is granted.</li>
+            <li>Approved members start with no permissions until you grant them.</li>
             <li>You can also invite specific people by email above.</li>
           </ul>
         </div>

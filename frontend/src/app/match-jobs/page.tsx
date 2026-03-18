@@ -57,6 +57,7 @@ export default function JobMatchPage() {
   const [stampCount, setStampCount] = useState(0);
   const [externalCount, setExternalCount] = useState(0);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -80,6 +81,7 @@ export default function JobMatchPage() {
       setSearchQuery(result.search_query || "");
       setStampCount(result.stamp_jobs_count || 0);
       setExternalCount(result.external_jobs_count || 0);
+      setNotice(result.notice || "");
     } catch (err: unknown) {
       setError((err as Error).message);
     }
@@ -272,6 +274,13 @@ export default function JobMatchPage() {
                     )}
                   </div>
 
+                  {/* Notice banner (e.g. quota exhausted) */}
+                  {notice && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 mb-6">
+                      <p className="text-sm text-amber-800">{notice}</p>
+                    </div>
+                  )}
+
                   {/* Section 2: External Jobs */}
                   {externalJobs.length > 0 && (
                     <div>
@@ -284,21 +293,31 @@ export default function JobMatchPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Empty state: both stamp and external are 0 */}
+                  {stampJobs.length === 0 && externalJobs.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-8 text-center">
+                      <p className="text-sm font-medium text-gray-700 mb-1">No matching jobs found</p>
+                      <p className="text-xs text-gray-400 max-w-md mx-auto">
+                        We couldn&apos;t find jobs matching your resume right now. Try uploading a different resume, or check back later as new jobs are posted.
+                      </p>
+                    </div>
+                  )}
                 </>
               );
             })()}
 
             {/* CTA */}
             <div className="mt-8 bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-100 p-8 text-center">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Stand out from other applicants</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Stand out when you apply</h3>
               <p className="text-sm text-gray-500 mb-6">
-                Add your experience and get your first claim verified to stand out when you apply.
+                Get your experience verified by past employers. Verified candidates get seen first by hiring teams on Stamp.
               </p>
               <Link
                 href={token ? "/dashboard?from=match" : "/?auth=signup&next=/dashboard?from=match"}
                 className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
               >
-                Get Verified
+                Verify your experience
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
               </Link>
             </div>

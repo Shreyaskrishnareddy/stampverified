@@ -138,7 +138,7 @@ export default function CompanyPage() {
               <p className="text-xs text-gray-400 mt-2">
                 {memberSince && `Member since ${memberSince}`}
                 {memberSince && company.verified_employee_count > 0 && " · "}
-                {company.verified_employee_count > 0 && `${company.verified_employee_count} confirmed employee${company.verified_employee_count > 1 ? "s" : ""} on Stamp`}
+                {company.verified_employee_count > 0 && `${company.verified_employee_count} verified employee${company.verified_employee_count > 1 ? "s" : ""} on Stamp`}
               </p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
@@ -81,6 +81,7 @@ function JobsContent() {
   const initialTab = searchParams.get("tab") === "internet" ? "internet" : "stamp";
 
   const [tab, setTab] = useState<"stamp" | "internet">(initialTab);
+  const hasAutoSwitched = useRef(false);
 
   // Stamp jobs state
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -117,21 +118,30 @@ function JobsContent() {
         ]);
         setJobs(jobsData);
         setFunctions(funcsData);
+        // Auto-switch to Internet Jobs tab when Stamp Jobs are empty (first load only)
+        if (jobsData.length === 0 && tab === "stamp" && !hasAutoSwitched.current && !functionFilter && !locationFilter && !typeFilter && !levelFilter && !searchQuery) {
+          hasAutoSwitched.current = true;
+          setTab("internet");
+        }
       } catch { /* empty */ }
       setLoading(false);
     };
     loadJobs();
-  }, [sort, functionFilter, locationFilter, typeFilter, levelFilter, searchQuery]);
+  }, [sort, functionFilter, locationFilter, typeFilter, levelFilter, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeFilterCount = [functionFilter, locationFilter, typeFilter, levelFilter].filter(Boolean).length;
+
+  const [internetNotice, setInternetNotice] = useState("");
 
   const handleResumeUpload = async (file: File) => {
     setInternetLoading(true);
     setInternetError("");
+    setInternetNotice("");
     try {
       const result = await api.matchJobsFromResume(null, file);
       setInternetJobs(result.jobs || []);
       setResumeSummary(result.resume_summary || null);
+      setInternetNotice(result.notice || "");
     } catch (err: unknown) {
       setInternetError((err as Error).message);
     }
@@ -334,6 +344,10 @@ function JobsContent() {
             {/* Error */}
             {internetError && (
               <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-6 border border-red-100">{internetError}</div>
+            )}
+
+            {internetNotice && (
+              <div className="bg-amber-50 text-amber-800 text-sm px-4 py-3 rounded-xl mb-6 border border-amber-200">{internetNotice}</div>
             )}
 
             {/* Loading */}

@@ -19,21 +19,9 @@ from app.services.job_search import (
     is_quota_available,
     get_quota_status,
 )
-from app.config import get_supabase, get_settings
+from app.config import get_supabase
 
 router = APIRouter(prefix="/api/jobs", tags=["job-match"])
-
-
-@router.get("/match/debug")
-async def match_debug():
-    """Temporary debug endpoint to check JSearch config."""
-    settings = get_settings()
-    key = settings.jsearch_api_key or ""
-    return {
-        "key_configured": bool(key),
-        "key_length": len(key),
-        "key_prefix": key[:8] + "..." if len(key) > 8 else "empty",
-    }
 
 
 @router.post("/match")

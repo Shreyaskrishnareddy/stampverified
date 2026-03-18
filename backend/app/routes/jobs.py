@@ -14,6 +14,7 @@ from app.middleware.auth import (
     get_current_user,
     get_current_company_member,
     require_permission,
+    require_domain_verified,
 )
 from app.models.job import JobCreate, JobUpdate
 from app.config import get_supabase
@@ -115,11 +116,12 @@ async def create_job(
 ):
     """Create a new job posting.
 
-    Requires can_post_jobs permission. The job function is auto-detected
-    from the title if not provided. Jobs default to 'active' status and
-    auto-expire after 30 days.
+    Requires can_post_jobs permission and a verified domain.
+    The job function is auto-detected from the title if not provided.
+    Jobs default to 'active' status and auto-expire after 30 days.
     """
     require_permission(user["member"], "can_post_jobs")
+    require_domain_verified(user["org"])
 
     org = user["org"]
     member = user["member"]

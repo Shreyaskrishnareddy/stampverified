@@ -51,6 +51,7 @@ export default function JobDetailPage() {
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState("");
   const [applySuccess, setApplySuccess] = useState(false);
+  const [verifiedClaimCount, setVerifiedClaimCount] = useState(0);
 
   useEffect(() => {
     if (!jobId) return;
@@ -84,6 +85,16 @@ export default function JobDetailPage() {
           const savedJobs = await api.getSavedJobs(session.access_token);
           const isSaved = (savedJobs as { id: string }[]).some(j => j.id === jobId);
           setSaved(isSaved);
+        } catch { /* empty */ }
+
+        // Check verified claims count
+        try {
+          const [emp, edu] = await Promise.all([
+            api.getEmploymentClaims(session.access_token),
+            api.getEducationClaims(session.access_token),
+          ]);
+          const verified = [...(emp as { status: string }[]), ...(edu as { status: string }[])].filter(c => c.status === "verified").length;
+          setVerifiedClaimCount(verified);
         } catch { /* empty */ }
       }
     });
@@ -205,13 +216,18 @@ export default function JobDetailPage() {
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-700 font-medium">
                 You&apos;ve applied to this position. <Link href="/dashboard/applications" className="underline">View your applications</Link>
               </div>
-            ) : isLoggedIn ? (
+            ) : isLoggedIn && verifiedClaimCount > 0 ? (
               <button
                 onClick={() => setShowApplyModal(true)}
                 className="w-full sm:w-auto bg-[#0A0A0A] text-white px-8 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
               >
                 Apply with Stamp
               </button>
+            ) : isLoggedIn ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <p className="text-sm font-medium text-amber-900">You need at least 1 verified claim to apply</p>
+                <p className="text-xs text-amber-700 mt-1">Add your experience in your <Link href="/dashboard" className="underline font-medium">dashboard</Link> and wait for verification.</p>
+              </div>
             ) : (
               <div className="space-y-3">
                 <button
@@ -220,7 +236,7 @@ export default function JobDetailPage() {
                 >
                   Sign up to Apply
                 </button>
-                <p className="text-xs text-gray-400">You need a Stamp profile with at least 1 confirmed claim to apply.</p>
+                <p className="text-xs text-gray-400">You need a Stamp profile with at least 1 verified claim to apply.</p>
               </div>
             )
           ) : (
@@ -287,7 +303,7 @@ export default function JobDetailPage() {
 
                 <div className="space-y-4">
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 text-sm text-gray-600">
-                    Your Stamp profile, confirmed claims, and resume will be shared with the employer.
+                    Your Stamp profile, verified claims, and resume will be shared with the employer.
                   </div>
 
                   <div>

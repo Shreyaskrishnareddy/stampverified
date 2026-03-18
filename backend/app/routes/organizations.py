@@ -1,7 +1,7 @@
 import re
 import secrets
 import socket
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.middleware.auth import get_current_user, get_current_company_member, require_admin
 from app.services.storage import upload_org_logo
@@ -17,10 +17,30 @@ from app.services.notifications import notify_user, notify_org_admin
 
 router = APIRouter(prefix="/api/organizations", tags=["organizations"])
 
-# Role-based email prefixes accepted for org registration
+# Role-based email prefixes accepted for org registration.
+# Primary tier: standard HR/recruiting inboxes.
+# Fallback tier: authority/institutional addresses common at early-stage companies.
 ALLOWED_ROLE_PREFIXES = {
+    # Primary: HR / recruiting
     "hr", "people", "careers", "recruiting", "talent",
     "registrar", "admissions", "humanresources", "team",
+    # Fallback: authority / institutional (early-stage companies)
+    "founder", "founders", "admin", "ceo", "coo", "cto",
+    "office", "info", "contact", "hello", "support",
+    "ops", "operations",
+}
+
+# Public email domains that cannot be registered as organizations
+PUBLIC_EMAIL_DOMAINS = {
+    "gmail.com", "yahoo.com", "yahoo.co.in", "hotmail.com", "outlook.com",
+    "live.com", "aol.com", "icloud.com", "me.com", "mac.com",
+    "mail.com", "protonmail.com", "proton.me", "zoho.com",
+    "yandex.com", "gmx.com", "gmx.net", "fastmail.com",
+    "tutanota.com", "inbox.com", "msn.com", "att.net",
+    "comcast.net", "verizon.net", "sbcglobal.net", "cox.net",
+    "earthlink.net", "charter.net", "optonline.net",
+    "rediffmail.com", "qq.com", "163.com", "126.com",
+    "naver.com", "daum.net", "hanmail.net",
 }
 
 
@@ -47,10 +67,9 @@ def _validate_role_based_email(email: str, expected_domain: str):
     # Strip dots/hyphens for matching (e.g. "human.resources" -> "humanresources")
     normalized = re.sub(r"[.\-_]", "", local_part)
     if normalized not in ALLOWED_ROLE_PREFIXES:
-        allowed_list = ", ".join(sorted(f"{p}@" for p in ALLOWED_ROLE_PREFIXES))
         raise HTTPException(
             status_code=400,
-            detail=f"Verifier email must be a role-based address (e.g. {allowed_list}). Personal emails like john@company.com are not accepted."
+            detail="Verifier email must be an organizational address (e.g. hr@, people@, careers@, founder@, admin@, team@). Personal emails like john@company.com are not accepted."
         )
 
 
@@ -106,6 +125,13 @@ async def register_organization(
 
     # Normalize domain to lowercase
     domain = org.domain.strip().lower()
+
+    # Block public email domains
+    if domain in PUBLIC_EMAIL_DOMAINS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{domain} is a public email provider and cannot be registered as a company"
+        )
 
     # Check if domain is already registered
     existing = (
@@ -214,6 +240,7 @@ def _link_pending_claims(domain: str, org_id: str, org_name: str, admin_email: s
                 "organization_id": org_id,
                 "status": "awaiting_verification",
                 "verification_token": new_token,
+                "token_expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
             }).eq("id", claim["id"]).execute()
 
             # Notify the user that their company has joined
@@ -267,6 +294,7 @@ def _link_pending_claims(domain: str, org_id: str, org_name: str, admin_email: s
                 "organization_id": org_id,
                 "status": "awaiting_verification",
                 "verification_token": new_token,
+                "token_expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
             }).eq("id", claim["id"]).execute()
 
             notify_user(
@@ -364,6 +392,128 @@ async def upload_logo(
     org = user["org"]
     logo_url = await upload_org_logo(org["id"], file)
     return {"logo_url": logo_url}
+
+
+# =============================================================================
+# DNS Domain Verification
+# =============================================================================
+
+
+@router.post("/mine/dns-verify/start")
+async def start_dns_verification(user: dict = Depends(get_current_company_member)):
+    """Generate a DNS TXT verification token for the organization's domain.
+
+    Admin only. Returns a token that must be added as a DNS TXT record:
+      stamp-verify=TOKEN
+
+    If a token already exists and isn't verified, returns the existing one.
+    """
+    require_admin(user["member"])
+
+    org = user["org"]
+    supabase = get_supabase()
+
+    if org.get("is_domain_verified"):
+        return {
+            "detail": "Domain is already verified",
+            "is_domain_verified": True,
+            "dns_verified_at": org.get("dns_verified_at"),
+        }
+
+    # Reuse existing token if one exists
+    if org.get("dns_verification_token"):
+        return {
+            "domain": org["domain"],
+            "txt_record": f"stamp-verify={org['dns_verification_token']}",
+            "instruction": f"Add a TXT record to {org['domain']} with the value above, then call the verify endpoint.",
+        }
+
+    # Generate new token
+    token = secrets.token_urlsafe(24)
+    supabase.table("organizations").update({
+        "dns_verification_token": token,
+    }).eq("id", org["id"]).execute()
+
+    return {
+        "domain": org["domain"],
+        "txt_record": f"stamp-verify={token}",
+        "instruction": f"Add a TXT record to {org['domain']} with the value above, then call the verify endpoint.",
+    }
+
+
+@router.post("/mine/dns-verify/check")
+async def check_dns_verification(user: dict = Depends(get_current_company_member)):
+    """Check if the DNS TXT record has been set and verify the domain.
+
+    Admin only. Looks up TXT records for the org's domain and checks
+    for the stamp-verify=TOKEN record.
+    """
+    require_admin(user["member"])
+
+    org = user["org"]
+    supabase = get_supabase()
+
+    if org.get("is_domain_verified"):
+        return {"detail": "Domain is already verified", "is_domain_verified": True}
+
+    expected_token = org.get("dns_verification_token")
+    if not expected_token:
+        raise HTTPException(status_code=400, detail="Start DNS verification first by calling the start endpoint")
+
+    # Look up TXT records
+    import dns.resolver
+    expected_value = f"stamp-verify={expected_token}"
+    domain = org["domain"]
+
+    try:
+        answers = dns.resolver.resolve(domain, "TXT")
+        txt_values = []
+        for rdata in answers:
+            for txt_string in rdata.strings:
+                txt_values.append(txt_string.decode("utf-8", errors="ignore"))
+
+        if expected_value in txt_values:
+            # Verified
+            now = datetime.now(timezone.utc).isoformat()
+            supabase.table("organizations").update({
+                "is_domain_verified": True,
+                "dns_verified_at": now,
+            }).eq("id", org["id"]).execute()
+
+            from app.services.audit import log_action
+            log_action(
+                action="domain_verified",
+                resource_type="organization",
+                resource_id=org["id"],
+                actor_id=user["id"],
+                actor_type="member",
+                metadata={"domain": domain, "method": "dns_txt"},
+            )
+
+            return {
+                "detail": "Domain verified successfully",
+                "is_domain_verified": True,
+                "dns_verified_at": now,
+            }
+        else:
+            return {
+                "detail": "TXT record not found yet",
+                "is_domain_verified": False,
+                "expected": expected_value,
+                "found": txt_values[:5],
+                "instruction": f"Add a TXT record to {domain} with value: {expected_value}",
+            }
+    except dns.resolver.NXDOMAIN:
+        raise HTTPException(status_code=400, detail=f"Domain {domain} does not exist")
+    except dns.resolver.NoAnswer:
+        return {
+            "detail": "No TXT records found for this domain",
+            "is_domain_verified": False,
+            "expected": expected_value,
+            "instruction": f"Add a TXT record to {domain} with value: {expected_value}",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DNS lookup failed: {str(e)}")
 
 
 @router.get("/search")

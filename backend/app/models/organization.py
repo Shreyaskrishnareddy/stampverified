@@ -33,6 +33,8 @@ class OrganizationResponse(BaseModel):
     logo_url: Optional[str] = None
     website_url: Optional[str] = None
     is_domain_verified: bool = False
+    dns_verification_token: Optional[str] = None
+    dns_verified_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

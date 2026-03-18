@@ -209,6 +209,74 @@ def _send_notification_email(
         print(f"[EMAIL] Failed to send notification to {to_email}: {e}")
 
 
+def send_workspace_invite_email(
+    to_email: str,
+    org_name: str,
+    inviter_email: str,
+    frontend_url: str,
+):
+    """Send workspace invitation email to a new team member."""
+    settings = get_settings()
+
+    if not settings.resend_api_key:
+        print("[EMAIL] RESEND_API_KEY not configured — skipping email")
+        return
+
+    resend.api_key = settings.resend_api_key
+
+    safe_org = _esc(org_name)
+    safe_inviter = _esc(inviter_email.split("@")[0].replace(".", " ").title())
+    join_url = f"{frontend_url}/for-employers"
+
+    subject = f"You've been invited to join {org_name} on Stamp"
+
+    html = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 0;">
+
+        <div style="padding: 0 20px; margin-bottom: 32px;">
+            <span style="font-size: 17px; font-weight: 700; color: #0A0A0A; letter-spacing: -0.03em;">Stamp</span>
+        </div>
+
+        <div style="border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; padding: 24px 20px; margin-bottom: 24px;">
+            <p style="font-size: 13px; color: #6B7280; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">Workspace Invitation</p>
+            <p style="font-size: 15px; color: #111827; margin: 0; line-height: 1.5;">
+                <strong>{safe_inviter}</strong> invited you to join <strong>{safe_org}</strong> on Stamp.
+            </p>
+        </div>
+
+        <div style="padding: 0 20px; margin-bottom: 24px;">
+            <p style="font-size: 14px; color: #6B7280; line-height: 1.6; margin: 0;">
+                Sign up with your <strong>{_esc(to_email.rsplit('@', 1)[-1])}</strong> email to join the workspace and start verifying professional claims.
+            </p>
+        </div>
+
+        <div style="padding: 0 20px; margin-bottom: 32px;">
+            <a href="{join_url}"
+               style="display: inline-block; background: #111827; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                Join {safe_org}
+            </a>
+        </div>
+
+        <div style="padding: 0 20px; border-top: 1px solid #F3F4F6; padding-top: 20px;">
+            <p style="font-size: 12px; color: #9CA3AF; margin: 0; line-height: 1.6;">
+                Stamp &mdash; stampverified.com
+            </p>
+        </div>
+
+    </div>
+    """
+
+    try:
+        resend.Emails.send({
+            "from": "Stamp <hello@stampverified.com>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html,
+        })
+    except Exception as e:
+        print(f"[EMAIL] Failed to send workspace invite to {to_email}: {e}")
+
+
 def send_new_application_email(to_email: str, candidate_name: str, job_title: str, frontend_url: str):
     """Notify employer: new application received."""
     _send_notification_email(

@@ -43,6 +43,8 @@ export default function TalentSearchPage() {
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  const [domainGated, setDomainGated] = useState(false);
+
   const loadData = useCallback(async (accessToken: string) => {
     try {
       const [results, jobs] = await Promise.all([
@@ -53,9 +55,14 @@ export default function TalentSearchPage() {
       const activeJobs = (jobs as Record<string, unknown>[]).map((j) => ({ id: j.id as string, title: j.title as string }));
       setOrgJobs(activeJobs);
       if (activeJobs.length > 0) setOutreachJobId(activeJobs[0].id);
-    } catch {
-      router.push("/for-employers");
-      return;
+    } catch (err: unknown) {
+      const msg = (err as Error).message || "";
+      if (msg.includes("domain") && msg.includes("verified")) {
+        setDomainGated(true);
+      } else {
+        router.push("/for-employers");
+        return;
+      }
     }
     setLoading(false);
   }, [router]);
@@ -128,11 +135,25 @@ export default function TalentSearchPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Talent Search</h1>
-            <p className="text-sm text-gray-500 mt-1">Discover candidates with confirmed experience who are open to opportunities.</p>
+            <p className="text-sm text-gray-500 mt-1">Discover candidates with verified experience who are open to opportunities.</p>
           </div>
           <Link href="/employer/dashboard" className="text-sm font-medium text-gray-500 hover:text-gray-900">Dashboard</Link>
         </div>
 
+        {domainGated && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6 text-center">
+            <svg className="w-10 h-10 text-blue-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Domain verification required</h3>
+            <p className="text-sm text-gray-500 max-w-md mx-auto mb-4">
+              Verify your company&apos;s domain to search verified candidates and send outreach. This protects candidates from unauthorized access.
+            </p>
+            <Link href="/employer/settings" className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
+              Verify domain in Settings
+            </Link>
+          </div>
+        )}
+
+        {!domainGated && <>
         {/* Search filters */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
           <div className="grid sm:grid-cols-3 gap-4">
@@ -196,7 +217,7 @@ export default function TalentSearchPage() {
                       <Link href={`/${candidate.username}`} className="font-semibold text-gray-900 hover:text-gray-700">
                         {candidate.full_name}
                       </Link>
-                      <span className="text-xs text-gray-400">{candidate.verified_count} confirmed</span>
+                      <span className="text-xs text-gray-400">{candidate.verified_count} verified</span>
                     </div>
                     {candidate.headline && <p className="text-sm text-gray-500">{candidate.headline}</p>}
                     {candidate.location && <p className="text-xs text-gray-400 mt-0.5">{candidate.location}</p>}
@@ -285,6 +306,7 @@ export default function TalentSearchPage() {
           </div>
         </div>
       )}
+      </>}
     </div>
   );
 }

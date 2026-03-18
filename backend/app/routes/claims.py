@@ -1,5 +1,6 @@
 import secrets
 import html as html_lib
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from app.middleware.auth import get_current_user
 from app.models.claims import (
@@ -42,23 +43,99 @@ def _calc_duration(start_str: str, end_str: str | None, is_current: bool = False
 
 router = APIRouter(prefix="/api/claims", tags=["claims"])
 
+TOKEN_TTL_DAYS = 30
+
 
 def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def token_expires_at() -> str:
+    return (datetime.now(timezone.utc) + timedelta(days=TOKEN_TTL_DAYS)).isoformat()
+
+
+MAX_PENDING_CLAIMS = 10
+
+
+def _check_pending_claim_limit(user_id: str):
+    """Prevent claim farming by limiting pending claims per user."""
+    supabase = get_supabase()
+    pending_statuses = ["awaiting_verification", "awaiting_org"]
+
+    emp_count = (
+        supabase.table("employment_claims")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .in_("status", pending_statuses)
+        .execute()
+    )
+    edu_count = (
+        supabase.table("education_claims")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .in_("status", pending_statuses)
+        .execute()
+    )
+    total = (emp_count.count or 0) + (edu_count.count or 0)
+    if total >= MAX_PENDING_CLAIMS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"You have {total} pending claims. Please wait for existing claims to be verified before submitting more (max {MAX_PENDING_CLAIMS})."
+        )
+
+
+def _normalize_domain(domain: str) -> str:
+    """Normalize a domain by stripping common subdomains.
+
+    e.g. mail.google.com → google.com, www.stanford.edu → stanford.edu
+    """
+    domain = domain.strip().lower()
+    parts = domain.split(".")
+    # If domain has 3+ parts (e.g. mail.google.com), try the root domain
+    # Keep two-part TLDs like .co.uk, .co.in
+    two_part_tlds = {"co.uk", "co.in", "co.jp", "com.au", "com.br", "ac.uk", "org.uk"}
+    if len(parts) >= 3:
+        potential_tld = ".".join(parts[-2:])
+        if potential_tld in two_part_tlds and len(parts) >= 4:
+            return ".".join(parts[-3:])
+        elif potential_tld not in two_part_tlds:
+            return ".".join(parts[-2:])
+    return domain
+
+
 def _lookup_org_by_domain(domain: str) -> dict | None:
-    """Look up a registered organization by domain. Returns org dict or None."""
+    """Look up a registered organization by domain. Returns org dict or None.
+
+    Tries exact match first, then normalized (subdomain-stripped) match.
+    """
     if not domain:
         return None
     supabase = get_supabase()
+    clean = domain.strip().lower()
+
+    # Try exact match first
     result = (
         supabase.table("organizations")
         .select("*")
-        .eq("domain", domain.strip().lower())
+        .eq("domain", clean)
         .execute()
     )
-    return result.data[0] if result.data else None
+    if result.data:
+        return result.data[0]
+
+    # Try normalized (root) domain
+    normalized = _normalize_domain(clean)
+    if normalized != clean:
+        result = (
+            supabase.table("organizations")
+            .select("*")
+            .eq("domain", normalized)
+            .execute()
+        )
+        if result.data:
+            return result.data[0]
+
+    return None
 
 
 def _send_claim_verification_email(org: dict, claimer_name: str, claim_type: str, claim_details: str, token: str):
@@ -107,8 +184,11 @@ async def create_employment_claim(
     System automatically checks if the company is registered on Stamp:
     - If registered: status = 'awaiting_verification', email sent to org verifier
     - If not registered: status = 'awaiting_org', user gets invite link
+
+    Limited to 10 pending claims per user.
     """
     supabase = get_supabase()
+    _check_pending_claim_limit(user["id"])
 
     # Look up organization by domain
     domain = claim.company_domain.strip().lower() if claim.company_domain else None
@@ -127,6 +207,7 @@ async def create_employment_claim(
         "end_date": claim.end_date.isoformat() if claim.end_date else None,
         "is_current": claim.is_current,
         "verification_token": token,
+        "token_expires_at": token_expires_at(),
     }
 
     if org:
@@ -249,11 +330,13 @@ async def update_employment_claim(
         # Generate new verification token
         new_token = generate_token()
         update_data["verification_token"] = new_token
+        update_data["token_expires_at"] = token_expires_at()
     elif old_claim["status"] == "awaiting_org" and effective_org_id:
         # Promote: org is now registered, move to awaiting_verification
         update_data["status"] = "awaiting_verification"
         new_token = generate_token()
         update_data["verification_token"] = new_token
+        update_data["token_expires_at"] = token_expires_at()
 
     result = (
         supabase.table("employment_claims")
@@ -309,6 +392,41 @@ async def delete_employment_claim(claim_id: str, user: dict = Depends(get_curren
     return {"detail": "Claim deleted"}
 
 
+@router.get("/employment/{claim_id}/correction-diff")
+async def get_employment_correction_diff(claim_id: str, user: dict = Depends(get_current_user)):
+    """Get the proposed correction diff for review before accepting."""
+    supabase = get_supabase()
+
+    existing = (
+        supabase.table("employment_claims")
+        .select("*")
+        .eq("id", claim_id)
+        .eq("user_id", user["id"])
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    claim = existing.data[0]
+    if claim["status"] != "correction_proposed":
+        raise HTTPException(status_code=400, detail="No pending correction to review")
+
+    changes = []
+    if claim.get("corrected_title") and claim["corrected_title"] != claim["title"]:
+        changes.append({"field": "Title", "current": claim["title"], "proposed": claim["corrected_title"]})
+    if claim.get("corrected_start_date") and claim["corrected_start_date"] != claim["start_date"]:
+        changes.append({"field": "Start Date", "current": claim["start_date"], "proposed": claim["corrected_start_date"]})
+    if claim.get("corrected_end_date") and claim.get("corrected_end_date") != claim.get("end_date"):
+        changes.append({"field": "End Date", "current": claim.get("end_date"), "proposed": claim["corrected_end_date"]})
+
+    return {
+        "claim_id": claim_id,
+        "correction_reason": claim.get("correction_reason"),
+        "corrected_by": claim.get("corrected_by"),
+        "changes": changes,
+    }
+
+
 @router.post("/employment/{claim_id}/accept-correction", response_model=EmploymentClaimResponse)
 async def accept_employment_correction(claim_id: str, user: dict = Depends(get_current_user)):
     """User accepts the org's proposed corrections. Claim becomes verified with corrected values."""
@@ -328,7 +446,6 @@ async def accept_employment_correction(claim_id: str, user: dict = Depends(get_c
     if claim["status"] != "correction_proposed":
         raise HTTPException(status_code=400, detail="No pending correction to accept")
 
-    from datetime import datetime, timezone
     update_data = {
         "status": "verified",
         "verified_at": datetime.now(timezone.utc).isoformat(),
@@ -397,6 +514,7 @@ async def deny_employment_correction(
         "status": "awaiting_verification",
         "user_denial_reason": response.denial_reason,
         "verification_token": new_token,
+        "token_expires_at": token_expires_at(),
         # Clear correction fields
         "corrected_title": None,
         "corrected_start_date": None,
@@ -460,6 +578,7 @@ async def resend_employment_verification(claim_id: str, user: dict = Depends(get
     supabase.table("employment_claims").update({
         "status": "awaiting_verification",
         "verification_token": new_token,
+        "token_expires_at": token_expires_at(),
         "expired_at": None,
     }).eq("id", claim_id).execute()
 
@@ -503,8 +622,12 @@ async def create_education_claim(
     claim: EducationClaimCreate,
     user: dict = Depends(get_current_user),
 ):
-    """Create an education claim. Same org-matching logic as employment."""
+    """Create an education claim. Same org-matching logic as employment.
+
+    Limited to 10 pending claims per user.
+    """
     supabase = get_supabase()
+    _check_pending_claim_limit(user["id"])
 
     domain = claim.institution_domain.strip().lower() if claim.institution_domain else None
     org = _lookup_org_by_domain(domain)
@@ -520,6 +643,7 @@ async def create_education_claim(
         "start_date": str(claim.start_date) if claim.start_date else None,
         "end_date": str(claim.end_date) if claim.end_date else None,
         "verification_token": token,
+        "token_expires_at": token_expires_at(),
     }
 
     if org:
@@ -624,11 +748,13 @@ async def update_education_claim(
         update_data["disputed_reason"] = None
         new_token = generate_token()
         update_data["verification_token"] = new_token
+        update_data["token_expires_at"] = token_expires_at()
     elif old_claim["status"] == "awaiting_org" and effective_org_id:
         # Promote: org is now registered, move to awaiting_verification
         update_data["status"] = "awaiting_verification"
         new_token = generate_token()
         update_data["verification_token"] = new_token
+        update_data["token_expires_at"] = token_expires_at()
 
     result = (
         supabase.table("education_claims")
@@ -684,6 +810,43 @@ async def delete_education_claim(claim_id: str, user: dict = Depends(get_current
     return {"detail": "Claim deleted"}
 
 
+@router.get("/education/{claim_id}/correction-diff")
+async def get_education_correction_diff(claim_id: str, user: dict = Depends(get_current_user)):
+    """Get the proposed correction diff for review before accepting."""
+    supabase = get_supabase()
+
+    existing = (
+        supabase.table("education_claims")
+        .select("*")
+        .eq("id", claim_id)
+        .eq("user_id", user["id"])
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    claim = existing.data[0]
+    if claim["status"] != "correction_proposed":
+        raise HTTPException(status_code=400, detail="No pending correction to review")
+
+    changes = []
+    if claim.get("corrected_degree") and claim["corrected_degree"] != claim["degree"]:
+        changes.append({"field": "Degree", "current": claim["degree"], "proposed": claim["corrected_degree"]})
+    if claim.get("corrected_field") and claim["corrected_field"] != claim.get("field_of_study"):
+        changes.append({"field": "Field of Study", "current": claim.get("field_of_study"), "proposed": claim["corrected_field"]})
+    if claim.get("corrected_start_date") and claim["corrected_start_date"] != claim.get("start_date"):
+        changes.append({"field": "Start Date", "current": claim.get("start_date"), "proposed": claim["corrected_start_date"]})
+    if claim.get("corrected_end_date") and claim.get("corrected_end_date") != claim.get("end_date"):
+        changes.append({"field": "End Date", "current": claim.get("end_date"), "proposed": claim["corrected_end_date"]})
+
+    return {
+        "claim_id": claim_id,
+        "correction_reason": claim.get("correction_reason"),
+        "corrected_by": claim.get("corrected_by"),
+        "changes": changes,
+    }
+
+
 @router.post("/education/{claim_id}/accept-correction", response_model=EducationClaimResponse)
 async def accept_education_correction(claim_id: str, user: dict = Depends(get_current_user)):
     """User accepts org's corrections to education claim."""
@@ -703,7 +866,6 @@ async def accept_education_correction(claim_id: str, user: dict = Depends(get_cu
     if claim["status"] != "correction_proposed":
         raise HTTPException(status_code=400, detail="No pending correction to accept")
 
-    from datetime import datetime, timezone
     update_data = {
         "status": "verified",
         "verified_at": datetime.now(timezone.utc).isoformat(),
@@ -758,6 +920,7 @@ async def deny_education_correction(
         "status": "awaiting_verification",
         "user_denial_reason": response.denial_reason,
         "verification_token": new_token,
+        "token_expires_at": token_expires_at(),
         "corrected_degree": None,
         "corrected_field": None,
         "corrected_start_date": None,
@@ -821,6 +984,7 @@ async def resend_education_verification(claim_id: str, user: dict = Depends(get_
     supabase.table("education_claims").update({
         "status": "awaiting_verification",
         "verification_token": new_token,
+        "token_expires_at": token_expires_at(),
         "expired_at": None,
     }).eq("id", claim_id).execute()
 

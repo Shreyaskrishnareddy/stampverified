@@ -180,16 +180,20 @@ class TestOutreach:
         from app.models.conversation import OutreachCreate
 
         sb = MagicMock()
-        # Candidate not open to work
-        sb.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_response([
+
+        # Candidate prefs query (candidate_preferences table)
+        prefs_mock = MagicMock()
+        prefs_mock.select.return_value.eq.return_value.execute.return_value = mock_response([
             {"user_id": "c-1", "open_to_work": False}
         ])
+
+        sb.table.return_value = prefs_mock
         mock_sb.return_value = sb
 
         user = {
             "id": "u-1", "email": "jane@acme.com",
             "member": {"id": "m-1", "role": "admin", "can_post_jobs": True},
-            "org": {"id": "org-1", "name": "Acme", "domain": "acme.com"},
+            "org": {"id": "org-1", "name": "Acme", "domain": "acme.com", "is_domain_verified": True},
         }
 
         outreach = OutreachCreate(candidate_id="c-1", job_id="j-1", message="Hi there")

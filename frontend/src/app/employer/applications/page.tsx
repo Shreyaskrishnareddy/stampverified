@@ -119,7 +119,7 @@ function MatchingCandidatesTab({ token, jobId }: { token: string | null; jobId: 
                   </div>
                 </div>
                 <div className="flex-shrink-0">
-                  <span className="text-xs text-gray-400">{candidate.verified_count as number} confirmed</span>
+                  <span className="text-xs text-gray-400">{candidate.verified_count as number} verified</span>
                 </div>
               </div>
             </div>

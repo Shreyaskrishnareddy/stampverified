@@ -36,21 +36,39 @@ async def expire_claims(
             raise HTTPException(status_code=401, detail="Unauthorized")
 
     supabase = get_supabase()
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=EXPIRY_DAYS)).isoformat()
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    cutoff = (now - timedelta(days=EXPIRY_DAYS)).isoformat()
     expired_count = 0
 
-    # Expire employment claims
-    emp = (
+    # Expire employment claims (by token_expires_at or updated_at fallback)
+    emp_by_token = (
         supabase.table("employment_claims")
         .select("id,user_id,company_name")
         .eq("status", "awaiting_verification")
+        .lt("token_expires_at", now_iso)
+        .execute()
+    )
+    emp_by_age = (
+        supabase.table("employment_claims")
+        .select("id,user_id,company_name")
+        .eq("status", "awaiting_verification")
+        .is_("token_expires_at", "null")
         .lt("updated_at", cutoff)
         .execute()
     )
-    for claim in emp.data or []:
+    # Deduplicate
+    seen_ids = set()
+    emp_claims = []
+    for claim in (emp_by_token.data or []) + (emp_by_age.data or []):
+        if claim["id"] not in seen_ids:
+            seen_ids.add(claim["id"])
+            emp_claims.append(claim)
+
+    for claim in emp_claims:
         supabase.table("employment_claims").update({
             "status": "expired",
-            "expired_at": datetime.now(timezone.utc).isoformat(),
+            "expired_at": now_iso,
         }).eq("id", claim["id"]).execute()
 
         notify_user(
@@ -63,18 +81,33 @@ async def expire_claims(
         )
         expired_count += 1
 
-    # Expire education claims
-    edu = (
+    # Expire education claims (by token_expires_at or updated_at fallback)
+    edu_by_token = (
         supabase.table("education_claims")
         .select("id,user_id,institution")
         .eq("status", "awaiting_verification")
+        .lt("token_expires_at", now_iso)
+        .execute()
+    )
+    edu_by_age = (
+        supabase.table("education_claims")
+        .select("id,user_id,institution")
+        .eq("status", "awaiting_verification")
+        .is_("token_expires_at", "null")
         .lt("updated_at", cutoff)
         .execute()
     )
-    for claim in edu.data or []:
+    seen_ids = set()
+    edu_claims = []
+    for claim in (edu_by_token.data or []) + (edu_by_age.data or []):
+        if claim["id"] not in seen_ids:
+            seen_ids.add(claim["id"])
+            edu_claims.append(claim)
+
+    for claim in edu_claims:
         supabase.table("education_claims").update({
             "status": "expired",
-            "expired_at": datetime.now(timezone.utc).isoformat(),
+            "expired_at": now_iso,
         }).eq("id", claim["id"]).execute()
 
         notify_user(

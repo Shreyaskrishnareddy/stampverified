@@ -8,7 +8,7 @@ import Navbar from "@/components/Navbar";
 import StatusBadge from "@/components/StatusBadge";
 
 type Claim = Record<string, unknown>;
-type Org = { name: string; domain: string; org_type: string };
+type Org = { name: string; domain: string; org_type: string; is_domain_verified: boolean };
 type Member = { role: string; can_post_jobs: boolean; can_verify_claims: boolean };
 type Toast = { id: number; message: string; type: "success" | "error" };
 
@@ -48,7 +48,7 @@ export default function EmployerDashboard() {
     try {
       const memberData = await api.getMyMembership(accessToken);
       setMember(memberData);
-      setOrg({ name: memberData.org_name, domain: memberData.org_domain, org_type: "company" });
+      setOrg({ name: memberData.org_name, domain: memberData.org_domain, org_type: "company", is_domain_verified: memberData.is_domain_verified || false });
     } catch {
       router.push("/for-employers");
       return;
@@ -142,7 +142,12 @@ export default function EmployerDashboard() {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{org?.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900">{org?.name}</h1>
+                {org?.is_domain_verified && (
+                  <svg className="w-5 h-5 text-[#C8A235]" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>
+                )}
+              </div>
               <p className="text-sm text-gray-500">{org?.domain} &middot; {org?.org_type}</p>
             </div>
             <div className="flex items-center gap-4 sm:gap-6">
@@ -153,7 +158,7 @@ export default function EmployerDashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-emerald-600">{employees.length}</p>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Confirmed</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Verified</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -182,6 +187,25 @@ export default function EmployerDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Domain verification banner */}
+        {org && !org.is_domain_verified && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-6 animate-fade-in">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-blue-900">Verify your domain to unlock trusted actions</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Post Stamp Verified jobs, verify candidate claims, and contact candidates once your domain is verified.
+                  You can still set up your workspace and prepare job drafts in the meantime.
+                </p>
+                <button onClick={() => router.push("/employer/settings")} className="mt-3 text-xs font-semibold text-blue-700 hover:text-blue-900 transition-colors">
+                  Go to Settings to verify →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">

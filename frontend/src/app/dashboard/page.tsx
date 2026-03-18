@@ -550,6 +550,13 @@ function DashboardContent() {
                     <p className="text-[10px] text-gray-400">Employers can find you in search. Never shown on your public profile.</p>
                   </div>
                 </label>
+                {prefs.open_to_work && verifiedClaims === 0 && (
+                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <p className="text-[11px] text-amber-800">
+                      You need at least 1 verified claim to appear in employer searches and receive outreach. Add a job or degree below to get started.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -559,7 +566,7 @@ function DashboardContent() {
         {totalClaims === 0 && profile && (
           <div className="animate-fade-in bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-100 p-8 mb-10">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Welcome to Stamp</h2>
-            <p className="text-sm text-gray-500 mb-6">Build your verified profile in three steps.</p>
+            <p className="text-sm text-gray-500 mb-6">Build your verified profile in three steps to unlock everything.</p>
             <div className="space-y-4">
               <div className="flex items-start gap-4">
                 <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
@@ -584,9 +591,27 @@ function DashboardContent() {
                   <span className="text-xs font-bold text-gray-400">3</span>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-400">Get verified</p>
-                  <p className="text-xs text-gray-400">Once the organization confirms, a verified badge appears on your profile.</p>
+                  <p className="text-sm font-semibold text-gray-400">Get verified — then you can apply and be discovered</p>
+                  <p className="text-xs text-gray-400">Once verified, you can apply to Stamp jobs, appear in employer searches, and receive recruiter introductions.</p>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Trust nudge: has claims but 0 verified */}
+        {totalClaims > 0 && verifiedClaims === 0 && profile && (
+          <div className="animate-fade-in bg-amber-50 rounded-2xl border border-amber-200 p-5 mb-10">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">{pendingClaims > 0 ? "Waiting for verification" : "No verified claims yet"}</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  {pendingClaims > 0
+                    ? `You have ${pendingClaims} pending claim${pendingClaims !== 1 ? "s" : ""}. Once at least one is verified, you can apply to jobs, appear in recruiter searches, and receive introductions.`
+                    : "You need at least one verified claim to apply to jobs and be discovered by recruiters. Edit or resubmit your claims below."
+                  }
+                </p>
               </div>
             </div>
           </div>
@@ -693,6 +718,11 @@ function DashboardContent() {
                 <p className="text-sm text-gray-500">{needsProfile ? "Choose a username to get started" : "Update your details"}</p>
               </div>
             </div>
+            {fromMatch && needsProfile && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4">
+                <p className="text-xs text-blue-700">You came from job matching. Create your profile, then add your experience to get verified and stand out when you apply.</p>
+              </div>
+            )}
             {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-100">{error}</div>}
             <form onSubmit={handleSaveProfile} className="space-y-4">
               {needsProfile && <div><label className={labelCls}>Username</label><input className={inputCls} value={formUsername} onChange={e => setFormUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))} required placeholder="johndoe" minLength={3} maxLength={30} /><p className="text-xs text-gray-400 mt-1">stampverified.com/{formUsername || "you"} · lowercase, letters, numbers, dots, hyphens</p></div>}

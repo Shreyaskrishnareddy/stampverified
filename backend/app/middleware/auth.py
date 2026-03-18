@@ -94,8 +94,7 @@ async def get_current_company_member(
         - member: full company_members row
         - org: full organizations row
 
-    Falls back to legacy admin_email matching if no company_member record
-    exists (handles un-migrated orgs gracefully).
+    All workspace access goes through the company_members table.
     """
     user = _decode_token(credentials.credentials)
     supabase = get_supabase()
@@ -115,51 +114,6 @@ async def get_current_company_member(
         org_data = row.pop("organizations")
         user["member"] = row
         user["org"] = org_data
-        return user
-
-    # Fallback: legacy admin_email matching (for orgs not yet migrated)
-    legacy_result = (
-        supabase.table("organizations")
-        .select("*")
-        .eq("admin_email", user["email"])
-        .limit(1)
-        .execute()
-    )
-
-    if legacy_result.data:
-        org = legacy_result.data[0]
-
-        # Auto-create the missing company_member record
-        member_data = {
-            "organization_id": org["id"],
-            "user_id": user["id"],
-            "email": user["email"],
-            "role": "admin",
-            "can_post_jobs": True,
-            "can_verify_claims": True,
-            "status": "active",
-            "joined_at": org["created_at"],
-        }
-        try:
-            insert_result = (
-                supabase.table("company_members")
-                .insert(member_data)
-                .execute()
-            )
-            user["member"] = insert_result.data[0]
-        except Exception:
-            # If insert fails (e.g., duplicate), re-query
-            retry = (
-                supabase.table("company_members")
-                .select("*")
-                .eq("user_id", user["id"])
-                .eq("organization_id", org["id"])
-                .limit(1)
-                .execute()
-            )
-            user["member"] = retry.data[0] if retry.data else member_data
-
-        user["org"] = org
         return user
 
     raise HTTPException(
@@ -198,14 +152,14 @@ def require_admin(member: dict):
         )
 
 
-# Legacy alias — kept for backward compatibility during migration.
-# New code should use get_current_company_member instead.
-async def get_current_org_admin(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> dict:
-    """DEPRECATED: Use get_current_company_member instead.
+def require_domain_verified(org: dict):
+    """Check that the organization's domain has been verified.
 
-    Kept for backward compatibility. Delegates to get_current_company_member
-    and reshapes the response to match the old format.
+    Unverified orgs cannot post jobs, verify claims, or appear in search.
+    Raises 403 if domain is not verified.
     """
-    return await get_current_company_member(credentials)
+    if not org.get("is_domain_verified"):
+        raise HTTPException(
+            status_code=403,
+            detail="Your organization's domain must be verified before performing this action. Contact support for domain verification."
+        )

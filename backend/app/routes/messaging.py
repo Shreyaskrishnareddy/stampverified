@@ -7,14 +7,16 @@ Three sections:
   4. Outreach (/api/employer/outreach)
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.middleware.auth import (
     get_current_user,
     get_current_company_member,
     require_permission,
+    require_domain_verified,
 )
+from app.services.audit import log_action
 from app.models.conversation import OutreachCreate, MessageCreate
 from app.config import get_supabase
 from app.services.talent_search import search_candidates, get_matching_candidates_for_job
@@ -41,9 +43,11 @@ async def talent_search(
 ):
     """Search discoverable candidates.
 
-    Only shows candidates who are open to work, have verified claims,
-    and are NOT currently employed at the searching company.
+    Requires verified company domain. Only shows candidates who are open
+    to work, have verified claims, and are NOT currently employed at the
+    searching company.
     """
+    require_domain_verified(user["org"])
     org = user["org"]
     supabase = get_supabase()
 
@@ -56,6 +60,7 @@ async def talent_search(
 
     results = search_candidates(
         org_domain=org["domain"],
+        org_id=org["id"],
         job_function_id=function_id,
         title_query=title,
         company_query=company,
@@ -75,10 +80,11 @@ async def get_job_matches(
 ):
     """Get matching candidates for a specific job.
 
-    Returns candidates who match the job's function AND have applied,
-    plus open-to-work candidates who haven't applied yet.
-    Applied candidates are marked with applied=True.
+    Requires verified company domain. Returns candidates who match the
+    job's function AND have applied, plus open-to-work candidates who
+    haven't applied yet. Applied candidates are marked with applied=True.
     """
+    require_domain_verified(user["org"])
     org = user["org"]
 
     # Verify the job belongs to this org
@@ -111,11 +117,17 @@ async def send_outreach(
 ):
     """Send a direct outreach to a candidate.
 
-    Requires can_post_jobs permission (outreach is a hiring action).
+    Requires can_post_jobs permission and a verified company domain.
+    Candidate must have at least one verified claim.
     Creates a conversation + first message atomically.
-    Recruiter must select a job and write a note (max 300 chars).
+
+    Anti-abuse protections (no hard daily cap):
+      - Duplicate prevention: same recruiter + same candidate + same job blocked
+      - Per-candidate cooldown: max 1 outreach per candidate per org per 7 days
+      - Suspicious volume logging: 50+ in 24h triggers audit log
     """
     require_permission(user["member"], "can_post_jobs")
+    require_domain_verified(user["org"])
 
     org = user["org"]
     member = user["member"]
@@ -131,6 +143,35 @@ async def send_outreach(
     if not prefs.data or not prefs.data[0].get("open_to_work"):
         raise HTTPException(status_code=400, detail="This candidate is not open to outreach")
 
+    # Check if candidate has blocked this company
+    blocked = (
+        supabase.table("blocked_companies")
+        .select("id")
+        .eq("user_id", outreach.candidate_id)
+        .eq("organization_id", org["id"])
+        .execute()
+    )
+    if blocked.data:
+        raise HTTPException(status_code=403, detail="This candidate is not available for outreach")
+
+    # Candidate must have at least 1 verified claim
+    emp_verified = (
+        supabase.table("employment_claims")
+        .select("id", count="exact")
+        .eq("user_id", outreach.candidate_id)
+        .eq("status", "verified")
+        .execute()
+    )
+    edu_verified = (
+        supabase.table("education_claims")
+        .select("id", count="exact")
+        .eq("user_id", outreach.candidate_id)
+        .eq("status", "verified")
+        .execute()
+    )
+    if (emp_verified.count or 0) + (edu_verified.count or 0) == 0:
+        raise HTTPException(status_code=400, detail="This candidate does not have verified claims and cannot be contacted")
+
     # Verify the job belongs to this org
     job = (
         supabase.table("jobs")
@@ -143,7 +184,7 @@ async def send_outreach(
         raise HTTPException(status_code=404, detail="Job not found")
     job_title = job.data[0].get("title", "")
 
-    # Check for existing outreach conversation with this candidate for this job
+    # Anti-abuse: prevent duplicate outreach (same recruiter + same candidate + same job)
     existing = (
         supabase.table("conversations")
         .select("id")
@@ -155,6 +196,43 @@ async def send_outreach(
     )
     if existing.data:
         raise HTTPException(status_code=400, detail="You already reached out to this candidate about this role")
+
+    # Anti-abuse: per-candidate cooldown (max 1 outreach per org per candidate per 7 days)
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    recent_from_org = (
+        supabase.table("conversations")
+        .select("id", count="exact")
+        .eq("type", "outreach")
+        .eq("candidate_id", outreach.candidate_id)
+        .eq("organization_id", org["id"])
+        .gte("created_at", week_ago)
+        .execute()
+    )
+    if (recent_from_org.count or 0) >= 1:
+        raise HTTPException(
+            status_code=429,
+            detail="Your company recently reached out to this candidate. Please wait before contacting them again."
+        )
+
+    # Anti-abuse: log suspicious volume (50+ in 24h from one member)
+    day_ago = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    outreach_today = (
+        supabase.table("conversations")
+        .select("id", count="exact")
+        .eq("type", "outreach")
+        .eq("company_member_id", member["id"])
+        .gte("created_at", day_ago)
+        .execute()
+    )
+    if (outreach_today.count or 0) >= 50:
+        log_action(
+            action="suspicious_outreach_volume",
+            resource_type="member",
+            resource_id=member["id"],
+            actor_id=user["id"],
+            actor_type="member",
+            metadata={"count_24h": outreach_today.count, "org_name": org["name"]},
+        )
 
     now = datetime.now(timezone.utc).isoformat()
 
@@ -656,3 +734,92 @@ async def send_application_message(
         "conversation_id": conv_id,
         "message": result.data[0] if result.data else msg_data,
     }
+
+
+# =============================================================================
+# Block company (candidate anti-abuse)
+# =============================================================================
+
+
+@router.post("/api/block/{organization_id}")
+async def block_company(
+    organization_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Block a company from contacting the candidate or seeing them in search.
+
+    Candidate-only action. Idempotent.
+    """
+    supabase = get_supabase()
+
+    org = supabase.table("organizations").select("id,name").eq("id", organization_id).execute()
+    if not org.data:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    existing = (
+        supabase.table("blocked_companies")
+        .select("id")
+        .eq("user_id", user["id"])
+        .eq("organization_id", organization_id)
+        .execute()
+    )
+    if existing.data:
+        return {"detail": "Already blocked", "blocked": True}
+
+    supabase.table("blocked_companies").insert({
+        "user_id": user["id"],
+        "organization_id": organization_id,
+    }).execute()
+
+    log_action(
+        action="company_blocked",
+        resource_type="organization",
+        resource_id=organization_id,
+        actor_id=user["id"],
+        actor_type="user",
+        metadata={"org_name": org.data[0]["name"]},
+    )
+
+    return {"detail": f"Blocked {org.data[0]['name']}", "blocked": True}
+
+
+@router.delete("/api/block/{organization_id}")
+async def unblock_company(
+    organization_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Unblock a previously blocked company."""
+    supabase = get_supabase()
+
+    supabase.table("blocked_companies").delete().eq(
+        "user_id", user["id"]
+    ).eq("organization_id", organization_id).execute()
+
+    return {"detail": "Unblocked", "blocked": False}
+
+
+@router.get("/api/blocked-companies")
+async def list_blocked_companies(user: dict = Depends(get_current_user)):
+    """List companies the candidate has blocked."""
+    supabase = get_supabase()
+
+    result = (
+        supabase.table("blocked_companies")
+        .select("organization_id, created_at, organizations(name,domain,logo_url)")
+        .eq("user_id", user["id"])
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    blocked = []
+    for row in (result.data or []):
+        org = row.pop("organizations", None) or {}
+        blocked.append({
+            "organization_id": row["organization_id"],
+            "blocked_at": row["created_at"],
+            "org_name": org.get("name"),
+            "org_domain": org.get("domain"),
+            "org_logo_url": org.get("logo_url"),
+        })
+
+    return blocked

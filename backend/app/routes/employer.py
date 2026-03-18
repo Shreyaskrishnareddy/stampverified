@@ -2,10 +2,11 @@ from datetime import datetime, date, timezone
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from app.middleware.auth import get_current_company_member, require_permission
+from app.middleware.auth import get_current_company_member, require_permission, require_domain_verified
 from app.models.claims import CorrectAndVerifyAction, DisputeAction
 from app.config import get_supabase
 from app.services.notifications import notify_user
+from app.services.audit import log_action
 
 router = APIRouter(prefix="/api/employer", tags=["employer"])
 
@@ -135,9 +136,10 @@ async def verify_claim(
 ):
     """Verify a claim as-is. No corrections needed.
 
-    Requires can_verify_claims permission.
+    Requires can_verify_claims permission and a verified domain.
     """
     require_permission(user["member"], "can_verify_claims")
+    require_domain_verified(user["org"])
 
     org = user["org"]
     table = f"{claim_type}_claims"
@@ -152,6 +154,15 @@ async def verify_claim(
         "verified_at": datetime.now(timezone.utc).isoformat(),
         "verified_by_org": org["name"],
     }).eq("id", claim_id).execute()
+
+    log_action(
+        action="verified",
+        resource_type="claim",
+        resource_id=claim_id,
+        actor_id=user["id"],
+        actor_type="member",
+        metadata={"table": table, "org_name": org["name"], "claim_type": claim_type},
+    )
 
     notify_user(
         user_id=claim["user_id"],
@@ -174,9 +185,10 @@ async def correct_and_verify_claim(
 ):
     """Propose corrections to a claim. Sent back to user for acceptance.
 
-    Requires can_verify_claims permission.
+    Requires can_verify_claims permission and a verified domain.
     """
     require_permission(user["member"], "can_verify_claims")
+    require_domain_verified(user["org"])
 
     org = user["org"]
     table = f"{claim_type}_claims"
@@ -212,6 +224,15 @@ async def correct_and_verify_claim(
 
     supabase.table(table).update(update_data).eq("id", claim_id).execute()
 
+    log_action(
+        action="correction_proposed",
+        resource_type="claim",
+        resource_id=claim_id,
+        actor_id=user["id"],
+        actor_type="member",
+        metadata={"table": table, "org_name": org["name"], "claim_type": claim_type},
+    )
+
     notify_user(
         user_id=claim["user_id"],
         type="correction_proposed",
@@ -233,9 +254,10 @@ async def dispute_claim(
 ):
     """Dispute a claim entirely. Claim is hidden from public profile.
 
-    Requires can_verify_claims permission.
+    Requires can_verify_claims permission and a verified domain.
     """
     require_permission(user["member"], "can_verify_claims")
+    require_domain_verified(user["org"])
 
     org = user["org"]
     table = f"{claim_type}_claims"
@@ -254,6 +276,15 @@ async def dispute_claim(
             "dispute_count": new_dispute_count,
         }).eq("id", claim_id).execute()
 
+        log_action(
+            action="claim_permanently_locked",
+            resource_type="claim",
+            resource_id=claim_id,
+            actor_id=user["id"],
+            actor_type="member",
+            metadata={"table": table, "org_name": org["name"], "dispute_count": new_dispute_count},
+        )
+
         notify_user(
             user_id=claim["user_id"],
             type="claim_locked",
@@ -270,6 +301,15 @@ async def dispute_claim(
         "disputed_reason": dispute.reason,
         "dispute_count": new_dispute_count,
     }).eq("id", claim_id).execute()
+
+    log_action(
+        action="disputed",
+        resource_type="claim",
+        resource_id=claim_id,
+        actor_id=user["id"],
+        actor_type="member",
+        metadata={"table": table, "org_name": org["name"], "reason": dispute.reason, "dispute_count": new_dispute_count},
+    )
 
     notify_user(
         user_id=claim["user_id"],

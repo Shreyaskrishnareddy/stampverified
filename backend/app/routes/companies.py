@@ -49,13 +49,15 @@ async def list_companies(
 ):
     """List registered companies. Public — no auth required.
 
-    Optionally search by name. Returns company info + job count.
+    Only shows domain-verified companies. Optionally search by name.
+    Returns company info + job count.
     """
     supabase = get_supabase()
 
     query = (
         supabase.table("organizations")
         .select("id,name,domain,org_type,logo_url,website_url,created_at")
+        .eq("is_domain_verified", True)
         .order("name")
     )
 

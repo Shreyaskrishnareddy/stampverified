@@ -75,10 +75,11 @@ function AuthModal({ open, onClose, defaultMode = "signin" }: { open: boolean; o
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // Redirect to next param or dashboard
+        // Redirect to next param or dashboard (sanitized to prevent open redirect)
         const params = new URLSearchParams(window.location.search);
         const next = params.get("next");
-        router.push(next || "/dashboard");
+        const safeNext = (next && next.startsWith("/") && !next.startsWith("//")) ? next : "/dashboard";
+        router.push(safeNext);
       }
     } catch (err: unknown) { setError((err as Error).message); }
     setLoading(false);

@@ -123,6 +123,25 @@ export default function CandidateMessagesPage() {
     }
   };
 
+  const handleBlock = async () => {
+    if (!token || !selectedConv) return;
+    const orgId = selectedConv.conversation.organization_id;
+    const orgName = selectedConv.conversation.org_name || "this company";
+    if (!confirm(`Block ${orgName}? They won't be able to contact you or see you in search. You can unblock anytime from Settings.`)) return;
+    try {
+      await api.blockCompany(token, orgId);
+      // Also decline the conversation if active
+      if (selectedConv.conversation.status === "active" && selectedConv.conversation.type === "outreach") {
+        try { await api.declineConversation(token, selectedConv.conversation.id); } catch { /* may already be declined */ }
+      }
+      const detail = await api.getConversation(token, selectedConv.conversation.id);
+      setSelectedConv(detail);
+      loadConversations(token);
+    } catch {
+      alert("Failed to block. Please try again.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAFA]">
@@ -208,9 +227,14 @@ export default function CandidateMessagesPage() {
                         <span className="font-medium">{selectedConv.conversation.org_name}</span> reached out about{" "}
                         <Link href={`/jobs/${selectedConv.conversation.job.id}`} className="font-medium underline">{selectedConv.conversation.job.title}</Link>
                       </div>
-                      <button onClick={handleDecline} className="text-xs text-red-500 hover:text-red-700 font-medium">
-                        Not Interested
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={handleDecline} className="text-xs text-red-500 hover:text-red-700 font-medium">
+                          Not Interested
+                        </button>
+                        <button onClick={handleBlock} className="text-xs text-gray-400 hover:text-red-500 font-medium">
+                          Block
+                        </button>
+                      </div>
                     </div>
                   )}
 

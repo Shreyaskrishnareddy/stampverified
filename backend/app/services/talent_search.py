@@ -17,6 +17,7 @@ from app.config import get_supabase
 
 def search_candidates(
     org_domain: str,
+    org_id: str | None = None,
     job_function_id: str | None = None,
     title_query: str | None = None,
     company_query: str | None = None,
@@ -29,6 +30,7 @@ def search_candidates(
 
     Args:
         org_domain: The searching company's domain (for auto-blocking current employees)
+        org_id: The searching company's ID (for filtering out candidates who blocked this company)
         job_function_id: Filter by preferred job function
         title_query: Search verified job titles (partial match)
         company_query: Search verified company names (partial match)
@@ -59,6 +61,23 @@ def search_candidates(
         return []
 
     candidate_ids = list(open_candidates.keys())
+
+    # Filter out candidates who blocked this company
+    if org_id and candidate_ids:
+        blocked = (
+            supabase.table("blocked_companies")
+            .select("user_id")
+            .eq("organization_id", org_id)
+            .in_("user_id", candidate_ids)
+            .execute()
+        )
+        blocked_ids = {b["user_id"] for b in (blocked.data or [])}
+        if blocked_ids:
+            candidate_ids = [uid for uid in candidate_ids if uid not in blocked_ids]
+            open_candidates = {uid: p for uid, p in open_candidates.items() if uid not in blocked_ids}
+
+    if not candidate_ids:
+        return []
 
     # Step 2: Get profiles for these candidates
     profiles_result = (

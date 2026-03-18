@@ -20,6 +20,11 @@ export default function SettingsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [profile, setProfile] = useState<{ username?: string; notification_preferences?: Record<string, Record<string, boolean>> } | null>(null);
+  const [blockedCompanies, setBlockedCompanies] = useState<{ organization_id: string; org_name: string; org_domain: string; org_logo_url: string | null; blocked_at: string }[]>([]);
+
+  const loadBlocked = async (t: string) => {
+    try { setBlockedCompanies(await api.getBlockedCompanies(t)); } catch { /* empty */ }
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -30,8 +35,9 @@ export default function SettingsPage() {
         const p = await api.getMyProfile(session.access_token);
         setProfile(p);
       } catch { /* empty */ }
+      loadBlocked(session.access_token);
     });
-  }, [router, supabase.auth]);
+  }, [router, supabase.auth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,6 +179,47 @@ export default function SettingsPage() {
             </div>
             <p className="text-[10px] text-gray-300">In-app defaults on. Email defaults off. Changes save automatically.</p>
           </div>
+        </div>
+
+        {/* Blocked companies */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Blocked companies</h2>
+          <p className="text-xs text-gray-400 mb-4">Blocked companies cannot contact you or see you in search results. You can unblock at any time.</p>
+          {blockedCompanies.length === 0 ? (
+            <p className="text-sm text-gray-400">No blocked companies.</p>
+          ) : (
+            <div className="space-y-3">
+              {blockedCompanies.map(bc => (
+                <div key={bc.organization_id} className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-3">
+                    {bc.org_logo_url ? (
+                      <img src={bc.org_logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400">
+                        {(bc.org_name || "?").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{bc.org_name}</p>
+                      <p className="text-xs text-gray-400">{bc.org_domain}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!token) return;
+                      try {
+                        await api.unblockCompany(token, bc.organization_id);
+                        loadBlocked(token);
+                      } catch { /* empty */ }
+                    }}
+                    className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    Unblock
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Delete account */}

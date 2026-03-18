@@ -170,6 +170,12 @@ export const api = {
   deactivateTeamMember: (token: string, memberId: string) =>
     request(`/api/employer/team/${memberId}`, { method: "DELETE", headers: authHeaders(token) }),
 
+  approveMember: (token: string, memberId: string) =>
+    request(`/api/employer/team/${memberId}/approve`, { method: "PUT", headers: authHeaders(token) }),
+
+  denyMember: (token: string, memberId: string) =>
+    request(`/api/employer/team/${memberId}/deny`, { method: "PUT", headers: authHeaders(token) }),
+
   joinWorkspace: (token: string) =>
     request("/api/employer/team/join", { method: "POST", headers: authHeaders(token) }),
 
@@ -396,4 +402,21 @@ export const api = {
       method: "DELETE", headers: authHeaders(token),
       body: JSON.stringify({ confirmation }),
     }),
+
+  // ── Block / Report ──
+  blockCompany: (token: string, organizationId: string) =>
+    request(`/api/block/${organizationId}`, { method: "POST", headers: authHeaders(token) }),
+
+  unblockCompany: (token: string, organizationId: string) =>
+    request(`/api/block/${organizationId}`, { method: "DELETE", headers: authHeaders(token) }),
+
+  getBlockedCompanies: (token: string) =>
+    request("/api/blocked-companies", { headers: authHeaders(token) }),
+
+  // ── DNS Verification ──
+  startDnsVerification: (token: string) =>
+    request("/api/organizations/mine/dns-verify/start", { method: "POST", headers: authHeaders(token) }),
+
+  checkDnsVerification: (token: string) =>
+    request("/api/organizations/mine/dns-verify/check", { method: "POST", headers: authHeaders(token) }),
 };

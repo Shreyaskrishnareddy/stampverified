@@ -20,8 +20,10 @@ from app.models.company_member import (
     CompanyMemberPermissionUpdate,
     NotificationPreferencesUpdate,
 )
-from app.config import get_supabase
+from app.config import get_supabase, get_settings
 from app.services.notifications import notify_org_admin
+from app.services.email import send_workspace_invite_email
+from app.services.audit import log_action
 
 router = APIRouter(prefix="/api/employer/team", tags=["team"])
 
@@ -45,7 +47,7 @@ async def list_members(user: dict = Depends(get_current_company_member)):
         supabase.table("company_members")
         .select("id,organization_id,user_id,email,role,can_post_jobs,can_verify_claims,status,joined_at,created_at")
         .eq("organization_id", org["id"])
-        .in_("status", ["active", "invited"])
+        .in_("status", ["active", "invited", "pending"])
         .order("created_at", desc=False)
         .execute()
     )
@@ -68,6 +70,7 @@ async def get_my_membership(user: dict = Depends(get_current_company_member)):
         "org_name": org.get("name"),
         "org_domain": org.get("domain"),
         "org_logo_url": org.get("logo_url"),
+        "is_domain_verified": org.get("is_domain_verified", False),
     }
 
 
@@ -129,6 +132,18 @@ async def invite_member(
             "invited_by": user["member"]["id"],
         }).eq("id", existing_member["id"]).execute()
 
+        # Send re-invite email
+        settings = get_settings()
+        try:
+            send_workspace_invite_email(
+                to_email=email,
+                org_name=org["name"],
+                inviter_email=user["email"],
+                frontend_url=settings.frontend_url,
+            )
+        except Exception:
+            pass
+
         return {"detail": f"Re-invited {email}", "status": "invited"}
 
     # Create the invited member record
@@ -145,6 +160,18 @@ async def invite_member(
     }
 
     result = supabase.table("company_members").insert(member_data).execute()
+
+    # Send invitation email
+    settings = get_settings()
+    try:
+        send_workspace_invite_email(
+            to_email=email,
+            org_name=org["name"],
+            inviter_email=user["email"],
+            frontend_url=settings.frontend_url,
+        )
+    except Exception as e:
+        print(f"[TEAM] Warning: Failed to send invite email to {email}: {e}")
 
     return {
         "detail": f"Invited {email} to {org['name']}",
@@ -219,6 +246,15 @@ async def update_member(
         .execute()
     )
 
+    log_action(
+        action="permission_updated",
+        resource_type="member",
+        resource_id=member_id,
+        actor_id=user["id"],
+        actor_type="member",
+        metadata={"changes": update_data, "target_email": target_member["email"]},
+    )
+
     return result.data[0]
 
 
@@ -282,6 +318,15 @@ async def deactivate_member(
         "status": "deactivated",
     }).eq("id", member_id).execute()
 
+    log_action(
+        action="member_deactivated",
+        resource_type="member",
+        resource_id=member_id,
+        actor_id=user["id"],
+        actor_type="member",
+        metadata={"target_email": target_member["email"]},
+    )
+
     return {"detail": f"Member {target_member['email']} has been removed"}
 
 
@@ -294,17 +339,32 @@ async def deactivate_member(
 async def join_workspace(user: dict = Depends(get_current_user)):
     """Join a company workspace based on email domain matching.
 
-    Any authenticated user whose email domain matches a registered
-    organization's domain can join that workspace. First member auto-
-    becomes admin. Subsequent members join with no permissions.
-
-    If there's a pending invite for this email, it's fulfilled automatically.
+    Requires verified email. Domain match creates pending membership
+    that requires admin approval. Pending invites are fulfilled automatically.
     """
     supabase = get_supabase()
     email = user["email"].strip().lower()
 
     if "@" not in email:
         raise HTTPException(status_code=400, detail="Invalid email address")
+
+    # Require verified email
+    try:
+        auth_user = supabase.auth.admin.get_user_by_id(user["id"])
+        if not auth_user or not auth_user.user or not auth_user.user.email_confirmed_at:
+            raise HTTPException(
+                status_code=403,
+                detail="You must verify your email address before joining a workspace. Check your inbox for a confirmation link."
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Auth lookup failed — block the join for safety
+        print(f"[TEAM] Warning: Could not verify email for {user['id']}: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to verify your email right now. Please try again in a few minutes."
+        )
 
     email_domain = email.rsplit("@", 1)[-1]
 
@@ -338,6 +398,8 @@ async def join_workspace(user: dict = Depends(get_current_user)):
         member = existing.data[0]
         if member["status"] == "active":
             raise HTTPException(status_code=400, detail="You are already a member of this workspace")
+        if member["status"] == "pending":
+            raise HTTPException(status_code=400, detail="Your join request is pending admin approval")
         if member["status"] == "deactivated":
             raise HTTPException(
                 status_code=403,
@@ -372,49 +434,56 @@ async def join_workspace(user: dict = Depends(get_current_user)):
         )
         member = result.data[0]
     else:
-        # Check if there are any existing active members
-        active_members = (
-            supabase.table("company_members")
-            .select("id", count="exact")
-            .eq("organization_id", org["id"])
-            .eq("status", "active")
-            .execute()
-        )
-
-        is_first_member = (active_members.count or 0) == 0
-
-        # Self-service join
+        # Self-service join: requires admin approval (pending status)
         member_data = {
             "organization_id": org["id"],
             "user_id": user["id"],
             "email": email,
-            "role": "admin" if is_first_member else "member",
-            "can_post_jobs": is_first_member,      # First member gets all permissions
-            "can_verify_claims": is_first_member,
-            "status": "active",
-            "joined_at": now,
+            "role": "member",
+            "can_post_jobs": False,
+            "can_verify_claims": False,
+            "status": "pending",
         }
 
         result = supabase.table("company_members").insert(member_data).execute()
         member = result.data[0]
 
-    # Notify existing admins that someone joined
-    if member["role"] != "admin":
-        admins = (
-            supabase.table("company_members")
-            .select("email")
-            .eq("organization_id", org["id"])
-            .eq("role", "admin")
-            .eq("status", "active")
-            .execute()
-        )
+    # Notify existing admins about the join/pending request
+    admins = (
+        supabase.table("company_members")
+        .select("email")
+        .eq("organization_id", org["id"])
+        .eq("role", "admin")
+        .eq("status", "active")
+        .execute()
+    )
+    if member["status"] == "pending":
         for admin in (admins.data or []):
             notify_org_admin(
                 org_admin_email=admin["email"],
                 type="member_joined",
-                title=f"{email} joined your workspace",
-                message=f"A new member joined {org['name']}. Review their permissions in Team settings.",
+                title=f"{email} wants to join your workspace",
+                message=f"{email} requested to join {org['name']}. Approve or deny in Team settings.",
             )
+        return {
+            "detail": f"Join request sent to {org['name']}. An admin will review your request.",
+            "member": member,
+            "org": {
+                "id": org["id"],
+                "name": org["name"],
+                "domain": org["domain"],
+                "logo_url": org.get("logo_url"),
+            },
+        }
+    else:
+        for admin in (admins.data or []):
+            if admin["email"] != email:
+                notify_org_admin(
+                    org_admin_email=admin["email"],
+                    type="member_joined",
+                    title=f"{email} joined your workspace",
+                    message=f"A new member joined {org['name']} via invitation.",
+                )
 
     return {
         "detail": f"Joined {org['name']}",
@@ -426,6 +495,97 @@ async def join_workspace(user: dict = Depends(get_current_user)):
             "logo_url": org.get("logo_url"),
         },
     }
+
+
+# =============================================================================
+# Approve / deny pending join requests
+# =============================================================================
+
+
+@router.put("/{member_id}/approve")
+async def approve_member(
+    member_id: str,
+    user: dict = Depends(get_current_company_member),
+):
+    """Approve a pending join request.
+
+    Admin only. Sets status to 'active' with no permissions (admin grants later).
+    """
+    require_admin(user["member"])
+
+    org = user["org"]
+    supabase = get_supabase()
+
+    target = (
+        supabase.table("company_members")
+        .select("*")
+        .eq("id", member_id)
+        .eq("organization_id", org["id"])
+        .eq("status", "pending")
+        .execute()
+    )
+    if not target.data:
+        raise HTTPException(status_code=404, detail="Pending member not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+    result = (
+        supabase.table("company_members")
+        .update({"status": "active", "joined_at": now})
+        .eq("id", member_id)
+        .execute()
+    )
+
+    log_action(
+        action="member_approved",
+        resource_type="member",
+        resource_id=member_id,
+        actor_id=user["id"],
+        actor_type="member",
+        metadata={"email": target.data[0]["email"]},
+    )
+
+    return {"detail": f"Approved {target.data[0]['email']}", "member": result.data[0]}
+
+
+@router.put("/{member_id}/deny")
+async def deny_member(
+    member_id: str,
+    user: dict = Depends(get_current_company_member),
+):
+    """Deny a pending join request.
+
+    Admin only. Sets status to 'deactivated'.
+    """
+    require_admin(user["member"])
+
+    org = user["org"]
+    supabase = get_supabase()
+
+    target = (
+        supabase.table("company_members")
+        .select("*")
+        .eq("id", member_id)
+        .eq("organization_id", org["id"])
+        .eq("status", "pending")
+        .execute()
+    )
+    if not target.data:
+        raise HTTPException(status_code=404, detail="Pending member not found")
+
+    supabase.table("company_members").update({
+        "status": "deactivated",
+    }).eq("id", member_id).execute()
+
+    log_action(
+        action="member_denied",
+        resource_type="member",
+        resource_id=member_id,
+        actor_id=user["id"],
+        actor_type="member",
+        metadata={"email": target.data[0]["email"]},
+    )
+
+    return {"detail": f"Denied {target.data[0]['email']}"}
 
 
 # =============================================================================

@@ -8,7 +8,10 @@ import Navbar from "@/components/Navbar";
 import CompanyAutocomplete from "@/components/CompanyAutocomplete";
 import { Suspense } from "react";
 
-const ROLE_PREFIXES = ["hr", "people", "careers", "recruiting", "talent", "registrar", "admissions", "team"];
+const ROLE_PREFIXES = [
+  "hr", "people", "careers", "recruiting", "talent", "registrar", "admissions", "humanresources", "team",
+  "founder", "founders", "admin", "ceo", "coo", "cto", "office", "info", "contact", "hello", "support", "ops", "operations",
+];
 
 function isRoleBasedEmail(email: string): boolean {
   const prefix = email.split("@")[0]?.toLowerCase().replace(/[.\-_]/g, "");
@@ -111,7 +114,7 @@ function RegisterContent() {
     // Validate verifier email is role-based
     const finalVerifier = verifierEmail || email;
     if (!isRoleBasedEmail(finalVerifier)) {
-      setError(`Verification email must be a role-based address (${ROLE_PREFIXES.join("@, ")}@). This is the email that receives verification requests.`);
+      setError("Verification email must be an organizational address (e.g. hr@, people@, founder@, admin@). Personal emails like john@ are not accepted.");
       setLoading(false);
       return;
     }
@@ -391,7 +394,7 @@ function RegisterContent() {
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
                   />
                   <p className="text-xs text-gray-400 mt-1">
-                    Role-based address that receives claim verification requests ({ROLE_PREFIXES.slice(0, 4).join("@, ")}@). Defaults to your email if left empty.
+                    Organizational address that receives claim verification requests (e.g. hr@, people@, founder@, admin@). Defaults to your email if left empty.
                   </p>
                 </div>
 
