@@ -177,52 +177,60 @@
 
 ## 5. Prioritized Execution Plan
 
-### Must Do Now (before any outreach)
+### Must Do Now (before any outreach) — ALL DONE
 
-| # | Task | Est. | Impact |
-|---|------|------|--------|
-| 1 | **CO.T1: Require email domain match on org registration** | 2hr | Blocks fake org registration. The #1 trust hole. |
-| 2 | **CO.T2: Remove legacy admin_email fallback** | 30min | Eliminates org takeover vector in auth.py. |
-| 3 | **RE.T1: Require admin approval for self-join** | 3hr | Stops unauthorized workspace access. Domain match → pending → admin approves. |
-| 4 | **CV.T1: Add 30-day TTL to verification tokens** | 2hr | Tokens can't live forever. Add expiry column + check. |
-| 5 | **CO.T3: Enforce `is_domain_verified` for sensitive actions** | 2hr | Unverified orgs can exist but can't verify claims or post Gold jobs. |
-| 6 | **XC.E8: Block public email domain org registration** | 30min | Nobody registers gmail.com as their company. |
-| 7 | **RE.T2: Send invitation emails** | 1hr | Already have Resend. Wire up the email on invite. |
-| 8 | **CV.T2: Invalidate old tokens on re-submission** | 30min | One claim = one active token at a time. |
+| # | Task | Status |
+|---|------|--------|
+| 1 | **CO.T1: Require email domain match on org registration** | `done` — registrant email domain must match org domain |
+| 2 | **CO.T2: Remove legacy admin_email fallback** | `done` — deleted from auth.py, all auth goes through company_members |
+| 3 | **RE.T1: Require admin approval for self-join** | `done` — domain match creates `status=pending`, approve/deny endpoints added |
+| 4 | **CV.T1: Add 30-day TTL to verification tokens** | `done` — `token_expires_at` column + check in verify.py, returns 410 |
+| 5 | **CO.T3: Enforce `is_domain_verified` for sensitive actions** | `done` — enforced on jobs, claims, talent search, outreach, token verification |
+| 6 | **XC.E8: Block public email domain org registration** | `done` — 30+ public domains blocked |
+| 7 | **RE.T2: Send invitation emails** | `done` — workspace invite email via Resend on invite/re-invite |
+| 8 | **CV.T2: Invalidate old tokens on re-submission** | `done` — token replaced atomically in update |
 
-**Total: ~12 hours of work. Blocks every CRITICAL and HIGH severity issue.**
+### Should Do Soon (before first 100 users) — MOSTLY DONE
 
-### Should Do Soon (before first 100 users)
-
-| # | Task | Est. | Impact |
-|---|------|------|--------|
-| 9 | XC.T1-T3: Audit log table + verification/permission logging | 4hr | Accountability. Required for any trust dispute resolution. |
-| 10 | RE.T3: Require Supabase email verification | 1hr | Prevents fake email joins. |
-| 11 | RE.T5: Rate limit outreach (10/day) | 1hr | Prevents recruiter spam. |
-| 12 | CV.T3: Show correction diff before acceptance | 2hr | Candidates see what org is changing before accepting. |
-| 13 | CO.T5: Contested domain handling | 2hr | "This company is already on Stamp" instead of silent overwrite. |
-| 14 | XC.T7: Per-user claim rate limit (10 pending) | 1hr | Prevents claim farming. |
-| 15 | RE.T4: 30-day invitation expiry | 1hr | Clean up stale invites. |
-| 16 | XC.E1: Subdomain normalization | 2hr | mail.google.com matches google.com. |
-
-**Total: ~15 hours. Covers the "first 100 users won't find exploits" threshold.**
+| # | Task | Status |
+|---|------|--------|
+| 9 | XC.T1-T3: Audit log table + verification/permission logging | `done` — audit_logs table, logging on verify/correct/dispute/permissions/member actions |
+| 10 | RE.T3: Require Supabase email verification | `done` — checks email_confirmed_at before workspace join |
+| 11 | RE.T5: Outreach anti-abuse | `done` — per-org cooldown, duplicate prevention, volume logging (replaced hard cap) |
+| 12 | CV.T3: Show correction diff before acceptance | `done` — correction-diff endpoints added |
+| 13 | CO.T5: Contested domain handling | `todo` |
+| 14 | XC.T7: Per-user claim rate limit (10 pending) | `done` |
+| 15 | RE.T4: 30-day invitation expiry | `todo` |
+| 16 | XC.E1: Subdomain normalization | `done` — `mail.google.com` → `google.com` |
 
 ### Later / Scale Phase
 
-| # | Task | Impact |
+| # | Task | Status |
 |---|------|--------|
-| 17 | CO.T4: Progressive verification tiers (email → verifier → DNS) | Company trust becomes visible and tiered |
-| 18 | CO.T7: DNS TXT verification flow | Premium trust layer for Gold ✓ |
-| 19 | XC.T5: Admin audit dashboard | Org admins see activity |
-| 20 | CV.T5: Dispute cooldown | Anti-griefing |
-| 21 | CV.T6: Structured dispute reasons | Better data on why claims fail |
-| 22 | RE.T7: Recruiter activity log | Admin visibility into member actions |
-| 23 | RE.T8: Hiring manager role | Granular permissions |
-| 24 | XC.E2: Staffing agency dual claims | Contractor support |
-| 25 | XC.E5: Dead company handling | Unverifiable claims with flag |
-| 26 | XC.E6: Domain alias table | Company renames/merges |
-| 27 | XC.E7: Employment type field | Full-time vs contractor |
-| 28 | CV.T7: Verification age/freshness display | Trust signal granularity |
+| 17 | CO.T4: Progressive verification tiers (email → verifier → DNS) | `todo` — architecture designed, not yet surfaced in UI tiers |
+| 18 | CO.T7: DNS TXT verification flow | `done` — start/check endpoints + employer settings UI |
+| 19 | XC.T5: Admin audit dashboard | `todo` |
+| 20 | CV.T5: Dispute cooldown | `todo` |
+| 21 | CV.T6: Structured dispute reasons | `todo` |
+| 22 | RE.T7: Recruiter activity log | `todo` |
+| 23 | RE.T8: Hiring manager role | `todo` |
+| 24 | XC.E2: Staffing agency dual claims | `todo` |
+| 25 | XC.E5: Dead company handling | `todo` |
+| 26 | XC.E6: Domain alias table | `todo` |
+| 27 | XC.E7: Employment type field | `todo` |
+| 28 | CV.T7: Verification age/freshness display | `todo` |
+
+### Additional items completed (not in original plan)
+
+| # | Task | Status |
+|---|------|--------|
+| 29 | Candidate block-company (block/unblock/list, filtered from search + outreach) | `done` |
+| 30 | Candidate trust-state guidance (open-to-work warning, verification nudge, welcome update) | `done` |
+| 31 | Employer trust-state guidance (dashboard banner, talent search gated state, gold badge) | `done` |
+| 32 | Frontend apply button gating (checks verified claims before showing) | `done` |
+| 33 | DNS verification UI (employer settings: start → instructions → check → success) | `done` |
+| 34 | Expanded verifier email policy (founder@, admin@, ceo@ etc. accepted) | `done` |
+| 35 | Cron uses token_expires_at as primary expiry signal | `done` |
 
 ---
 
@@ -230,19 +238,22 @@
 
 1. **Verification is claim-level, not person-level.** A person is not "verified" — each claim is independently verified. This stays.
 
-2. **Company trust is progressive, not binary.**
-   - Tier 0: Registered (no verification) → can view dashboard only
-   - Tier 1: Email domain match (auto) → can invite members, view candidates
-   - Tier 2: Verifier inbox configured → can verify claims
-   - Tier 3: DNS verified → Gold ✓ jobs, company directory listing, talent search
+2. **Company trust is progressive, not binary.** (IMPLEMENTED)
+   - Tier 0: Registered (no verification) → can view dashboard, invite members, prepare jobs
+   - Tier 1: Email domain match (auto on registration) → workspace access
+   - Tier 2: DNS verified (`is_domain_verified=true`) → Gold ✓ jobs, claim verification, talent search, outreach, company directory listing
 
-3. **DNS is not a gate.** It's a premium trust upgrade. Most companies will operate at Tier 1-2. Tier 3 is for companies that want to signal maximum trust.
+3. **DNS is not a gate.** It's a premium trust upgrade. Companies can onboard, set up workspace, invite teammates, and draft jobs without DNS verification. DNS unlocks trust-sensitive actions.
 
-4. **Recruiter trust inherits from company.** A recruiter is trusted because their company is trusted. No individual KYC for recruiters.
+4. **Recruiter trust inherits from company.** A recruiter is trusted because their company is verified. No individual KYC for recruiters. (IMPLEMENTED: `require_domain_verified` on all sensitive employer endpoints)
 
-5. **Sensitive actions are permission-gated, not domain-gated.** Domain match gets you in the door. Permissions (set by admin) determine what you can do.
+5. **Sensitive actions require both domain verification AND permissions.** Domain verification gets the org trusted. Permissions (set by admin) determine what individual members can do. (IMPLEMENTED: `require_domain_verified` + `require_permission` checks)
 
-6. **Token-based verification is the moat.** No login required for verifiers. This stays. Add TTL and one-time-use, but keep the zero-friction verification UX.
+6. **Token-based verification is the moat.** No login required for verifiers. TTL enforced (30-day expiry with 410 response). Token-based endpoints also check `is_domain_verified` on the org.
+
+7. **Candidates must earn trust to enter recruiter surfaces.** (IMPLEMENTED) At least 1 verified claim required before: applying to jobs, appearing in talent search, receiving outreach. Self-reported profiles stay private until verified.
+
+8. **Anti-abuse over hard caps.** (IMPLEMENTED) No hard daily outreach limits for verified recruiters. Instead: per-org-per-candidate cooldown (7 days), duplicate prevention, suspicious volume logging, candidate block-company feature.
 
 ---
 

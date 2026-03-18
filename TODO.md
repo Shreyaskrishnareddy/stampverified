@@ -207,13 +207,58 @@ Frontend verification checklist (manual):
 - YC S26 application drafted
 - Documentation updated (README, ROADMAP, TASKS, TODO, VERIFICATION_TODO)
 
+## Completed (2026-03-17 — Verification Hardening + Trust Policy + Trust UX)
+
+Security hardening:
+- Removed `/api/jobs/match/debug` endpoint (API key exposure)
+- Sanitized `next` redirect param (open redirect fix)
+- Removed legacy `admin_email` fallback in auth middleware (org takeover vector)
+- Blocked 30+ public email domains from org registration
+- Enforced `is_domain_verified` on: job posting, claim verify/correct/dispute (dashboard + token), talent search, job matches, outreach
+- Required admin approval for self-join (pending status with approve/deny endpoints)
+- Added 30-day TTL to verification tokens (`token_expires_at` column + check in verify endpoints)
+- Token expiry returns 410 with clear "expired" message
+
+Trust infrastructure:
+- Invitation emails sent via Resend on invite/re-invite
+- Supabase email verification required for workspace join
+- `audit_logs` table created; verification, permission, and member actions logged
+- Per-user claim rate limit (max 10 pending)
+- Subdomain normalization for domain matching (`mail.google.com` → `google.com`)
+- Correction diff endpoints (`GET /api/claims/{type}/{id}/correction-diff`)
+- Cron job updated to use `token_expires_at` as primary expiry signal
+
+Trust policy:
+- Candidates must have 1+ verified claim before outreach (checked in `send_outreach`)
+- Recruiters must have verified domain for talent search, job matches, and outreach
+- Removed hard 10/day outreach cap; replaced with anti-abuse (per-org-per-candidate 7-day cooldown, duplicate prevention, suspicious volume logging at 50+/24h)
+- Candidate block-company feature: block/unblock/list endpoints + blocked companies filtered from talent search and outreach
+- DNS TXT domain verification: start + check endpoints (`/api/organizations/mine/dns-verify/start|check`)
+- `blocked_companies` table, `dns_verification_token`/`dns_verified_at` columns on organizations
+
+Trust UX:
+- DNS verification UI in employer settings (start → instructions with copy buttons → check → success state)
+- Domain verification banner on employer dashboard with gold badge when verified
+- Domain-gated state on talent search page with CTA to settings
+- Candidate trust-state guidance: open-to-work warning when 0 verified, waiting-for-verification nudge, updated welcome steps
+- Frontend apply button gating: checks verified claim count before showing apply button (unverified sees explanation + link to dashboard)
+- Block company button in messaging outreach banner + blocked companies list in candidate settings with unblock
+- Standardized "confirmed" → "verified" across 8 frontend files
+- Expanded verifier email policy: `founder@`, `admin@`, `ceo@`, `office@`, `info@` etc. now accepted alongside `hr@`, `people@`, `careers@`
+- `is_domain_verified` returned from membership endpoint for frontend awareness
+- Notice banner rendered on match-jobs and jobs pages (quota exhaustion etc.)
+- Auto-switch to Internet Jobs tab when Stamp Jobs count is 0
+- `from=match` context shown during profile creation
+- Token expiry shows "Link expired" heading on verify page
+- 174 tests passing, 2 migrations (009, 010)
+
 ---
 
 ## Session Context for Next Conversation
 
 - **Product:** stampverified.com — verified professional identity platform
 - **Stack:** FastAPI + Next.js 16 + Supabase + Resend + JSearch API
-- **Stage:** Live product, pre-users, pre-revenue. Cold start phase.
+- **Stage:** Live product, pre-users, pre-revenue. Private alpha ready.
 - **Founder:** Shreyas Krishnareddy, solo founder, graduated May 2025
 - **Key files:** TASKS.md (build history), ROADMAP.md (product plan), VERIFICATION_TODO.md (trust architecture), this file (TODO)
 - **GitHub:** github.com/Shreyaskrishnareddy/stampverified
@@ -221,6 +266,14 @@ Frontend verification checklist (manual):
 - **Tagline:** "Your career. Verified."
 - **Key decision:** Verification is the product. Resume matching is the hook.
 - **Trust model:** Progressive — email match → verifier inbox → DNS verification. DNS is NOT a gate, it's a premium trust upgrade.
+- **Trust enforcement (implemented):**
+  - Candidates: 1+ verified claim required to apply, enter recruiter pool, or be contacted
+  - Recruiters: domain-verified company + approved membership + explicit permissions
+  - Companies: can onboard freely; DNS verification unlocks premium trust actions
+  - Anti-abuse: per-org cooldown on outreach, candidate block-company, audit logging, claim rate limits
+- **Migrations:** 10 total (001-010). 009 + 010 must be run for trust hardening features.
+- **Tests:** 174 passing
+- **Readiness:** 7.5/10 for private alpha. Blocking items: run migrations, deploy, verify one test org's domain.
 
 ---
 
@@ -230,12 +283,19 @@ A user uploads a resume, sees useful jobs, understands the difference between
 web jobs and Stamp jobs, signs up smoothly, lands in the right place, understands
 exactly what to do next, and never hits a confusing or suspicious edge case.
 
-**The gap from current state to 9/10:**
+**The gap from current state to 9/10 (updated 2026-03-17):**
 
-1. Fix P0.1-P0.9 security items (trust foundation, ~12 hours)
-2. Fix the dead-end when both Stamp and external jobs return empty (UX, 30 min)
-3. Preserve `from=match` context through profile creation (conversion, 1 hr)
-4. Render quota/notice states and explain when external jobs are unavailable (trust, 30 min)
-5. Rewrite "Get Verified" CTA to connect job matching → verification → stronger applications (product, 15 min)
+1. ~~Fix P0.1-P0.9 security items~~ — DONE
+2. ~~Fix the dead-end when both Stamp and external jobs return empty~~ — DONE
+3. ~~Preserve `from=match` context through profile creation~~ — DONE
+4. ~~Render quota/notice states and explain when external jobs are unavailable~~ — DONE
+5. ~~Rewrite "Get Verified" CTA to connect job matching → verification → stronger applications~~ — DONE
+
+**Remaining gap:**
+
+1. Privacy Policy + Terms of Service (legal, not code)
+2. First real verified company (cold start — manually verify or use DNS flow)
+3. JSearch API timeout increase on Render (P0.13)
+4. Error monitoring / Sentry (P3.20)
 
 These changes turn "clever feature" into "trustworthy product."
