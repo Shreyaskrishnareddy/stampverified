@@ -153,7 +153,7 @@ export default function TalentSearchPage() {
           </div>
         )}
 
-        {!domainGated && <>
+        {!domainGated && (<>
         {/* Search filters */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
           <div className="grid sm:grid-cols-3 gap-4">
@@ -257,6 +257,7 @@ export default function TalentSearchPage() {
             ))}
           </div>
         )}
+        </>)}
       </div>
 
       {/* Outreach modal */}
@@ -306,7 +307,6 @@ export default function TalentSearchPage() {
           </div>
         </div>
       )}
-      </>}
     </div>
   );
 }
