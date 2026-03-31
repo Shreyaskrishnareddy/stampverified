@@ -113,6 +113,9 @@ async def match_jobs_from_resume(
         threshold=1,
     )
 
+    # Limit to top 200 to keep response fast
+    greenhouse_results = greenhouse_results[:200]
+
     response = {
         "resume_summary": {
             "titles": resume.titles,

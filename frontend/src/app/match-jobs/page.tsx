@@ -233,8 +233,12 @@ export default function JobMatchPage() {
         {loading && (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <div className="w-10 h-10 mx-auto border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4" />
-            <p className="text-gray-600 font-medium">Analyzing your resume...</p>
-            <p className="text-sm text-gray-400 mt-1">Matching against {totalScanned > 0 ? `${totalScanned.toLocaleString()}+` : "thousands of"} jobs from top companies</p>
+            <p className="text-gray-600 font-medium">Matching your resume...</p>
+            <p className="text-sm text-gray-400 mt-1">Scanning 7,600+ jobs from 48 top companies</p>
+            <div className="mt-4 text-xs text-gray-300 space-y-1">
+              <p>Airbnb, Stripe, OpenAI, Databricks, Discord, Vercel, MongoDB...</p>
+              <p>This takes about 10-15 seconds</p>
+            </div>
           </div>
         )}
 
