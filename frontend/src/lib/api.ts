@@ -239,6 +239,19 @@ export const api = {
     return res.json();
   },
 
+  matchJobsWithSkills: async (skills: string[], level: string) => {
+    const res = await fetch(`${API_URL}/api/jobs/match-with-skills`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skills, level }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: "Failed to match" }));
+      throw new Error(error.detail);
+    }
+    return res.json();
+  },
+
   // ── Candidate Preferences ──
   getCandidatePreferences: (token: string) =>
     request("/api/candidate/preferences", { headers: authHeaders(token) }),

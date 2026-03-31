@@ -1,28 +1,54 @@
 """Resume-based job matching routes.
 
-Upload resume → validate quality → search (cached) → return matches.
-The hook that gives candidates immediate value on signup.
+Upload resume -> validate quality -> match against Greenhouse jobs + Stamp jobs -> return scored results.
+
+Sources:
+  1. Stamp verified jobs (from database) — shown first with gold badge
+  2. Greenhouse jobs (5,700+ from 29 top companies) — scored and ranked
 
 Protections:
-  - Resume quality validation before JSearch call
-  - Query+location caching (1 hour TTL)
+  - Resume quality validation before matching
   - IP rate limiting (15/hour)
-  - Monthly quota guardrail with graceful degradation
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from app.services.resume_parser import extract_text_from_pdf, parse_resume, build_search_query
-from app.services.job_search import (
-    search_external_jobs,
-    validate_resume_quality,
-    check_rate_limit,
-    is_quota_available,
-    get_quota_status,
-)
+from app.services.greenhouse_matcher import match_greenhouse_jobs
 from app.config import get_supabase
+import time
+from collections import defaultdict
 
 router = APIRouter(prefix="/api/jobs", tags=["job-match"])
 
+# ─── Rate Limiting ────────────────────────────────────────────────────────────
+
+_ip_requests: dict[str, list[float]] = defaultdict(list)
+_RATE_LIMIT = 15
+_RATE_WINDOW = 3600
+
+
+def _check_rate_limit(ip: str) -> bool:
+    now = time.monotonic()
+    _ip_requests[ip] = [t for t in _ip_requests[ip] if now - t < _RATE_WINDOW]
+    if len(_ip_requests[ip]) >= _RATE_LIMIT:
+        return False
+    _ip_requests[ip].append(now)
+    return True
+
+
+# ─── Resume Quality ───────────────────────────────────────────────────────────
+
+def _validate_resume_quality(titles, skills, companies):
+    has_title = len(titles) >= 1
+    has_skills = len(skills) >= 3
+    has_some = len(titles) >= 1 and len(skills) >= 1
+
+    if has_title or has_skills or has_some or len(skills) >= 1:
+        return True, ""
+    return False, "Could not find enough job-relevant information in this resume. Make sure it includes job titles, skills, or company names."
+
+
+# ─── Match Endpoint ───────────────────────────────────────────────────────────
 
 @router.post("/match")
 async def match_jobs_from_resume(
@@ -31,22 +57,19 @@ async def match_jobs_from_resume(
 ):
     """Upload a resume and get matching jobs.
 
-    Parses the resume, validates quality, searches JSearch API (cached),
-    and returns matching jobs. Stamp verified jobs appear first.
+    Parses the resume, validates quality, matches against Greenhouse jobs
+    and Stamp's own database. Returns scored results.
 
     Public endpoint — no auth required. Rate limited by IP.
     """
-    # Get client IP for rate limiting
     client_ip = request.client.host if request.client else "unknown"
 
-    # Rate limit check
-    if not check_rate_limit(client_ip):
+    if not _check_rate_limit(client_ip):
         raise HTTPException(
             status_code=429,
             detail="Too many uploads. Please wait a few minutes and try again."
         )
 
-    # Validate file
     if not file.content_type or file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF resumes are accepted")
 
@@ -54,64 +77,99 @@ async def match_jobs_from_resume(
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Resume must be under 5MB")
 
-    # Extract text from PDF
     try:
         text = extract_text_from_pdf(content)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     if not text or len(text.strip()) < 50:
-        raise HTTPException(status_code=400, detail="Could not extract enough text from this PDF. Please check the file.")
+        raise HTTPException(status_code=400, detail="Could not extract enough text from this PDF.")
 
-    # Parse resume
     resume = parse_resume(text)
 
-    # Validate resume quality before burning API quota
-    is_valid, reason = validate_resume_quality(resume.titles, resume.skills, resume.companies)
+    is_valid, reason = _validate_resume_quality(resume.titles, resume.skills, resume.companies)
     if not is_valid:
         raise HTTPException(status_code=400, detail=reason)
 
-    # Build search query from resume
-    query = build_search_query(resume)
-    if not query:
-        raise HTTPException(status_code=400, detail="Could not extract enough information to search for jobs.")
-
-    # Search external jobs (with caching and quota tracking)
-    external_jobs = await search_external_jobs(
-        query=query,
-        location=resume.location,
-        num_results=15,
-        client_ip=client_ip,
-    )
-
-    # Check if external search was skipped due to quota
-    quota = get_quota_status()
-    quota_exhausted = not is_quota_available() and len(external_jobs) == 0
-
-    # Search Stamp's own jobs
+    # Match against Stamp's own database
     stamp_jobs = _match_stamp_jobs(resume)
 
-    # Combine: Stamp jobs first, then external
-    all_jobs = stamp_jobs + external_jobs
+    # Match against Greenhouse jobs (5,700+ from top companies)
+    greenhouse_results = match_greenhouse_jobs(
+        candidate_skills=resume.skills,
+        experience_level=_infer_level(resume),
+        threshold=1,
+    )
 
     response = {
         "resume_summary": {
             "titles": resume.titles,
-            "skills": resume.skills[:10],
+            "skills": resume.skills[:15],
             "location": resume.location,
             "experience_years": resume.experience_years,
             "companies": resume.companies,
         },
-        "search_query": query,
         "stamp_jobs_count": len(stamp_jobs),
-        "external_jobs_count": len(external_jobs),
-        "jobs": all_jobs,
+        "greenhouse_jobs_count": len(greenhouse_results),
+        "total_greenhouse_scanned": _get_total_greenhouse_count(),
+        "jobs": stamp_jobs,
+        "greenhouse_jobs": greenhouse_results,
     }
 
-    if quota_exhausted:
-        response["notice"] = "External job search is temporarily unavailable. Showing Stamp jobs only."
-
     return response
+
+
+@router.post("/match-with-skills")
+async def match_jobs_with_skills(
+    request: Request,
+    data: dict,
+):
+    """Match jobs using provided skills list (after user edits skills).
+
+    Request body: {"skills": ["python", "react", ...], "level": "mid"}
+    """
+    client_ip = request.client.host if request.client else "unknown"
+
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Too many requests.")
+
+    skills = data.get("skills", [])
+    level = data.get("level", "mid")
+
+    if not skills:
+        raise HTTPException(status_code=400, detail="No skills provided")
+
+    greenhouse_results = match_greenhouse_jobs(
+        candidate_skills=skills,
+        experience_level=level,
+        threshold=1,
+    )
+
+    return {
+        "greenhouse_jobs_count": len(greenhouse_results),
+        "greenhouse_jobs": greenhouse_results,
+    }
+
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _infer_level(resume) -> str:
+    """Infer experience level from resume."""
+    text_lower = " ".join(resume.titles).lower() + " " + (resume.raw_text or "")[:500].lower()
+    for kw in ["senior", "sr.", "lead", "principal", "staff"]:
+        if kw in text_lower:
+            return "senior"
+    for kw in ["junior", "jr.", "entry", "intern", "new grad"]:
+        if kw in text_lower:
+            return "junior"
+    return "mid"
+
+
+def _get_total_greenhouse_count() -> int:
+    """Get total number of Greenhouse jobs loaded."""
+    from app.services.greenhouse_matcher import _load_greenhouse_jobs
+    jobs = _load_greenhouse_jobs()
+    return len(jobs) if jobs else 0
 
 
 def _match_stamp_jobs(resume) -> list[dict]:
@@ -131,7 +189,6 @@ def _match_stamp_jobs(resume) -> list[dict]:
             org = job.pop("organizations", None) or {}
             job_title_lower = (job.get("title") or "").lower()
 
-            # Match by title or skills
             title_match = any(
                 t.lower() in job_title_lower or job_title_lower in t.lower()
                 for t in resume.titles
@@ -157,56 +214,12 @@ def _match_stamp_jobs(resume) -> list[dict]:
                     "posted_at": job.get("posted_at"),
                     "apply_link": None,
                     "is_stamp_verified": True,
+                    "score": None,
+                    "matched_skills": [],
+                    "why_matched": "Verified employer on Stamp",
+                    "seniority": None,
                 })
 
         return stamp_jobs
     except Exception:
         return []
-
-
-@router.post("/match-text")
-async def match_jobs_from_text(
-    request: Request,
-    data: dict,
-):
-    """Match jobs from raw resume text.
-
-    Request body: {"text": "...resume text...", "location": "optional"}
-    """
-    client_ip = request.client.host if request.client else "unknown"
-
-    if not check_rate_limit(client_ip):
-        raise HTTPException(status_code=429, detail="Too many requests. Please wait a few minutes.")
-
-    text = data.get("text", "").strip()
-    if not text or len(text) < 50:
-        raise HTTPException(status_code=400, detail="Resume text is too short")
-
-    resume = parse_resume(text)
-
-    is_valid, reason = validate_resume_quality(resume.titles, resume.skills, resume.companies)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail=reason)
-
-    query = build_search_query(resume)
-    if not query:
-        raise HTTPException(status_code=400, detail="Could not extract enough information to search for jobs.")
-
-    location = data.get("location") or resume.location
-
-    external_jobs = await search_external_jobs(
-        query=query,
-        location=location,
-        num_results=15,
-        client_ip=client_ip,
-    )
-
-    return {
-        "resume_summary": {
-            "titles": resume.titles,
-            "skills": resume.skills[:10],
-            "location": resume.location,
-        },
-        "search_query": query,
-        "jobs": external_jobs,
-    }
