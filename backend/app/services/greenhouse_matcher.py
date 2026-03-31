@@ -347,14 +347,16 @@ def _generate_why_matched(matched_skills, total_matched):
 
 # ─── Main Match Function ──────────────────────────────────────────────────────
 
-def match_greenhouse_jobs(
+def match_greenhouse_jobs_from_list(
+    jobs: list[dict],
     candidate_skills: list[str],
     experience_level: str = "mid",
     threshold: int = 1,
 ) -> list[dict]:
-    """Match candidate against Greenhouse jobs.
+    """Match candidate against a provided list of Greenhouse jobs.
 
     Args:
+        jobs: List of job dicts (from scrape_greenhouse())
         candidate_skills: List of candidate's skills (strings)
         experience_level: junior, mid, or senior
         threshold: minimum score to include (0-100)
@@ -362,7 +364,6 @@ def match_greenhouse_jobs(
     Returns:
         List of matched jobs with scores, sorted by score descending.
     """
-    jobs = _load_greenhouse_jobs()
     if not jobs:
         return []
 

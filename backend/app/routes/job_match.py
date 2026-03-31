@@ -13,7 +13,6 @@ Protections:
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from app.services.resume_parser import extract_text_from_pdf, parse_resume, build_search_query
-from app.services.greenhouse_matcher import match_greenhouse_jobs
 from app.config import get_supabase
 import time
 from collections import defaultdict
@@ -94,8 +93,13 @@ async def match_jobs_from_resume(
     # Match against Stamp's own database
     stamp_jobs = _match_stamp_jobs(resume)
 
-    # Match against Greenhouse jobs (5,700+ from top companies)
-    greenhouse_results = match_greenhouse_jobs(
+    # Scrape fresh Greenhouse jobs and match
+    from app.services.greenhouse_scraper import scrape_greenhouse
+    fresh_jobs = scrape_greenhouse()
+
+    from app.services.greenhouse_matcher import match_greenhouse_jobs_from_list
+    greenhouse_results = match_greenhouse_jobs_from_list(
+        jobs=fresh_jobs,
         candidate_skills=resume.skills,
         experience_level=_infer_level(resume),
         threshold=1,
@@ -111,7 +115,7 @@ async def match_jobs_from_resume(
         },
         "stamp_jobs_count": len(stamp_jobs),
         "greenhouse_jobs_count": len(greenhouse_results),
-        "total_greenhouse_scanned": _get_total_greenhouse_count(),
+        "total_greenhouse_scanned": _get_total_greenhouse_count(fresh_jobs),
         "jobs": stamp_jobs,
         "greenhouse_jobs": greenhouse_results,
     }
@@ -139,7 +143,12 @@ async def match_jobs_with_skills(
     if not skills:
         raise HTTPException(status_code=400, detail="No skills provided")
 
-    greenhouse_results = match_greenhouse_jobs(
+    from app.services.greenhouse_scraper import scrape_greenhouse
+    fresh_jobs = scrape_greenhouse()
+
+    from app.services.greenhouse_matcher import match_greenhouse_jobs_from_list
+    greenhouse_results = match_greenhouse_jobs_from_list(
+        jobs=fresh_jobs,
         candidate_skills=skills,
         experience_level=level,
         threshold=1,
@@ -165,10 +174,8 @@ def _infer_level(resume) -> str:
     return "mid"
 
 
-def _get_total_greenhouse_count() -> int:
-    """Get total number of Greenhouse jobs loaded."""
-    from app.services.greenhouse_matcher import _load_greenhouse_jobs
-    jobs = _load_greenhouse_jobs()
+def _get_total_greenhouse_count(jobs: list) -> int:
+    """Get total number of Greenhouse jobs."""
     return len(jobs) if jobs else 0
 
 
