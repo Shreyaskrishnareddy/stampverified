@@ -627,7 +627,7 @@ stampverified/
 │       │   ├── employer.py          # Employer dashboard
 │       │   ├── team.py              # Company workspace management
 │       │   ├── jobs.py              # Job posting + public feed
-│       │   ├── job_match.py         # Resume-to-jobs matching (JSearch)
+│       │   ├── job_match.py         # Resume-to-jobs matching (Greenhouse + Stamp)
 │       │   ├── applications.py      # Apply flow + saved jobs
 │       │   ├── messaging.py         # Conversations + talent search
 │       │   ├── companies.py         # Company directory + requests
@@ -643,7 +643,9 @@ stampverified/
 │           ├── job_functions.py     # Auto-detection from titles
 │           ├── jd_extract.py        # JD text extraction (regex)
 │           ├── url_import.py        # ATS URL import (JSON-LD)
-│           ├── job_search.py        # JSearch API (cached, rate-limited)
+│           ├── job_search.py        # JSearch API (legacy, replaced by Greenhouse)
+│           ├── greenhouse_scraper.py # Greenhouse API scraper (50 companies, 5,700+ jobs)
+│           ├── greenhouse_matcher.py # Matching engine (hard filters + scoring)
 │           ├── resume_parser.py     # Resume PDF parsing
 │           └── talent_search.py     # Candidate search engine
 │
@@ -745,7 +747,7 @@ python -m pytest tests/ -v
 | `ENVIRONMENT` | `development` or `production` |
 | `INVITE_HMAC_SECRET` | Secret for signing invite links |
 | `CRON_SECRET` | Auth token for cron endpoints |
-| `JSEARCH_API_KEY` | RapidAPI key for JSearch (job matching) |
+| `JSEARCH_API_KEY` | RapidAPI key for JSearch (legacy, no longer required) |
 
 **Frontend (.env.local):**
 
@@ -771,6 +773,59 @@ python -m pytest tests/ -v
 | Claim integrity | 5-dispute permanent lock, org is the authority |
 | Account deletion | Atomic PostgreSQL function, zero data retention |
 | Email | SPF/DKIM/DMARC required on domain before launch |
+
+---
+
+## Job Matching System
+
+Stamp matches candidates against 5,700+ real jobs from 29 top tech companies via the Greenhouse public API.
+
+**How it works:**
+
+```
+Candidate uploads resume (PDF)
+    |
+    v
+Resume parser extracts: titles, skills, location, companies
+    |
+    v
+Two-phase matching:
+    |
+    +-- Stamp verified jobs (from database) -- shown first with gold badge
+    |
+    +-- Greenhouse jobs (5,700+ from 29 companies) -- scored and ranked
+        |
+        Hard filters (pass/fail):
+            - Location: US only or remote open to US
+            - Title: engineering roles only
+            - Seniority: within 1 level of candidate
+            - Deal-breakers: clearance, visa restrictions
+        |
+        Scoring: 60% skill match + 40% keyword depth
+        |
+        Results with: match %, "why you matched" sentence, skill tags
+```
+
+**Companies included:**
+Airbnb, Stripe, Figma, Discord, Cloudflare, Databricks, Datadog, Twitch, Coinbase, Robinhood, Instacart, Pinterest, Reddit, Brex, Airtable, Vercel, GitLab, Elastic, MongoDB, Cockroach Labs, PlanetScale, LaunchDarkly, Postman, Twilio, Algolia, Grafana Labs, ClickHouse, dbt Labs, Fivetran
+
+**Refresh job data:**
+```bash
+cd backend
+python -m app.services.greenhouse_scraper
+```
+
+**Features:**
+- Match scores (0-100%) with color-coded circles
+- Toggleable skill tags — click to enable/disable skills, add missing ones
+- Experience level selector (Early career / Mid / Senior)
+- Filters: Best matches / All jobs / Remote only
+- Click to expand: "Why you matched" + description snippet + matched skill tags
+- Company logos via Google favicon API
+- Salary display when available
+- "Update matches" button after editing skills or level
+- Stamp verified jobs appear first with gold badge
+- No external API dependencies (Greenhouse public API, no key needed)
 
 ---
 
