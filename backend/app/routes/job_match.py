@@ -93,9 +93,9 @@ async def match_jobs_from_resume(
     # Match against Stamp's own database
     stamp_jobs = _match_stamp_jobs(resume)
 
-    # Scrape fresh Greenhouse jobs and match
-    from app.services.greenhouse_scraper import scrape_greenhouse
-    fresh_jobs = scrape_greenhouse()
+    # Scrape fresh jobs from all ATS platforms and match
+    from app.services.ats_scraper import scrape_all_ats
+    fresh_jobs = scrape_all_ats()
 
     from app.services.greenhouse_matcher import match_greenhouse_jobs_from_list
     greenhouse_results = match_greenhouse_jobs_from_list(
@@ -143,8 +143,8 @@ async def match_jobs_with_skills(
     if not skills:
         raise HTTPException(status_code=400, detail="No skills provided")
 
-    from app.services.greenhouse_scraper import scrape_greenhouse
-    fresh_jobs = scrape_greenhouse()
+    from app.services.ats_scraper import scrape_all_ats
+    fresh_jobs = scrape_all_ats()
 
     from app.services.greenhouse_matcher import match_greenhouse_jobs_from_list
     greenhouse_results = match_greenhouse_jobs_from_list(
