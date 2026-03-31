@@ -1,10 +1,10 @@
 """Resume-based job matching routes.
 
-Upload resume -> validate quality -> match against Greenhouse jobs + Stamp jobs -> return scored results.
+Upload resume -> validate quality -> match against cached jobs + Stamp jobs -> return scored results.
 
 Sources:
   1. Stamp verified jobs (from database) — shown first with gold badge
-  2. Greenhouse jobs (5,700+ from 29 top companies) — scored and ranked
+  2. ATS jobs (7,600+ from 48 companies) — scraped on server startup, cached in memory
 
 Protections:
   - Resume quality validation before matching
@@ -13,9 +13,20 @@ Protections:
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from app.services.resume_parser import extract_text_from_pdf, parse_resume, build_search_query
+from app.services.ats_scraper import scrape_all_ats
 from app.config import get_supabase
 import time
 from collections import defaultdict
+
+# ─── Job Cache (loaded on startup) ────────────────────────────────────────────
+_cached_ats_jobs: list[dict] = []
+
+
+def load_jobs_on_startup():
+    """Scrape all ATS platforms and cache in memory. Call once on server start."""
+    global _cached_ats_jobs
+    _cached_ats_jobs = scrape_all_ats()
+    print(f"[JOB CACHE] {len(_cached_ats_jobs)} jobs cached in memory")
 
 router = APIRouter(prefix="/api/jobs", tags=["job-match"])
 
@@ -93,13 +104,10 @@ async def match_jobs_from_resume(
     # Match against Stamp's own database
     stamp_jobs = _match_stamp_jobs(resume)
 
-    # Scrape fresh jobs from all ATS platforms and match
-    from app.services.ats_scraper import scrape_all_ats
-    fresh_jobs = scrape_all_ats()
-
+    # Match against cached ATS jobs
     from app.services.greenhouse_matcher import match_greenhouse_jobs_from_list
     greenhouse_results = match_greenhouse_jobs_from_list(
-        jobs=fresh_jobs,
+        jobs=_cached_ats_jobs,
         candidate_skills=resume.skills,
         experience_level=_infer_level(resume),
         threshold=1,
@@ -115,7 +123,7 @@ async def match_jobs_from_resume(
         },
         "stamp_jobs_count": len(stamp_jobs),
         "greenhouse_jobs_count": len(greenhouse_results),
-        "total_greenhouse_scanned": _get_total_greenhouse_count(fresh_jobs),
+        "total_greenhouse_scanned": _get_total_ats_count(),
         "jobs": stamp_jobs,
         "greenhouse_jobs": greenhouse_results,
     }
@@ -143,12 +151,9 @@ async def match_jobs_with_skills(
     if not skills:
         raise HTTPException(status_code=400, detail="No skills provided")
 
-    from app.services.ats_scraper import scrape_all_ats
-    fresh_jobs = scrape_all_ats()
-
     from app.services.greenhouse_matcher import match_greenhouse_jobs_from_list
     greenhouse_results = match_greenhouse_jobs_from_list(
-        jobs=fresh_jobs,
+        jobs=_cached_ats_jobs,
         candidate_skills=skills,
         experience_level=level,
         threshold=1,
@@ -174,9 +179,9 @@ def _infer_level(resume) -> str:
     return "mid"
 
 
-def _get_total_greenhouse_count(jobs: list) -> int:
-    """Get total number of Greenhouse jobs."""
-    return len(jobs) if jobs else 0
+def _get_total_ats_count() -> int:
+    """Get total number of cached ATS jobs."""
+    return len(_cached_ats_jobs)
 
 
 def _match_stamp_jobs(resume) -> list[dict]:
