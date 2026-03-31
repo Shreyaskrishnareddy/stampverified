@@ -191,8 +191,7 @@ export default function JobMatchPage() {
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Find Jobs That Match You</h1>
-          <p className="text-sm text-gray-500 mt-1">Upload your resume. See matching jobs from top companies.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
         </div>
 
         {/* Upload area */}
