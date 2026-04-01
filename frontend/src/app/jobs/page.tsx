@@ -338,7 +338,7 @@ export default function JobMatchPage() {
 
             {/* Stats */}
             <div className="text-xs text-gray-400 mb-4">
-              {totalScanned.toLocaleString()} jobs scanned · {bestCount} matched · {remoteCount} remote
+              {bestCount} matched · {remoteCount} remote
             </div>
 
             {/* Section 1: Stamp Verified Jobs */}
