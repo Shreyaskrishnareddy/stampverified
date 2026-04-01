@@ -455,9 +455,6 @@ export default function JobMatchPage() {
                         {isExpanded && (
                           <div className="mt-4 pt-4 border-t border-gray-100">
                             <p className="text-sm text-gray-600 mb-3">{job.why_matched}</p>
-                            {job.description_snippet && (
-                              <p className="text-xs text-gray-400 mb-3 line-clamp-3">{job.description_snippet}</p>
-                            )}
                             {job.matched_skills.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 mb-3">
                                 {job.matched_skills.map((s, si) => (
