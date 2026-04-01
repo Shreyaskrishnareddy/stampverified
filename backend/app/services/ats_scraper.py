@@ -232,10 +232,22 @@ def _fetch_lever(name, slug):
 
 # ─── Unified Job Format ───────────────────────────────────────────────────────
 
+def _strip_html(text):
+    """Remove HTML tags and clean up whitespace."""
+    if not text:
+        return ""
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'&[a-zA-Z]+;', ' ', text)  # &lt; &gt; &amp; etc
+    text = re.sub(r'&#\d+;', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+
 def _make_job(source, company, title, location, description, url, created_at, salary_text=""):
     """Create a unified job dict regardless of ATS source."""
     loc_lower = location.lower() if location else ""
     remote = "remote" in loc_lower
+    description = _strip_html(description)
 
     return {
         "source": source,
