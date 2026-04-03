@@ -68,13 +68,6 @@ app.include_router(lookup.router)
 app.include_router(cron.router)
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Load ATS jobs into memory on server start."""
-    from app.routes.job_match import load_jobs_on_startup
-    load_jobs_on_startup()
-
-
 @app.get("/")
 async def root():
     return {"name": "Stamp API", "version": "2.0.0", "status": "running"}

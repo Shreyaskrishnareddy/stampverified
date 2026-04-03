@@ -1,32 +1,37 @@
 """Resume-based job matching routes.
 
-Upload resume -> validate quality -> match against cached jobs + Stamp jobs -> return scored results.
+Upload resume -> parse -> embed full text -> pgvector search against 25,000+ jobs -> return scored results.
 
 Sources:
-  1. Stamp verified jobs (from database) — shown first with gold badge
-  2. ATS jobs (7,600+ from 48 companies) — scraped on server startup, cached in memory
+  1. Stamp verified jobs (from Stamp database) — shown first with gold badge
+  2. OneProfile jobs (25,000+ from 350+ companies) — pgvector cosine similarity
 
 Protections:
   - Resume quality validation before matching
   - IP rate limiting (15/hour)
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Request
-from app.services.resume_parser import extract_text_from_pdf, parse_resume, build_search_query
-from app.services.ats_scraper import scrape_all_ats
-from app.config import get_supabase
+import re
 import time
 from collections import defaultdict
 
-# ─── Job Cache (loaded on startup) ────────────────────────────────────────────
-_cached_ats_jobs: list[dict] = []
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
+from openai import OpenAI
 
+from app.services.resume_parser import extract_text_from_pdf, parse_resume
+from app.services.greenhouse_matcher import (
+    extract_skills_from_text,
+    normalize_skill,
+    SKILL_SYNONYMS,
+    _passes_title_filter,
+    _passes_location_filter,
+    _passes_experience_filter,
+    _detect_seniority,
+    _detect_deal_breakers,
+    FOREIGN_IN_TITLE,
+)
+from app.config import get_supabase, get_oneprofile_supabase, get_settings
 
-def load_jobs_on_startup():
-    """Scrape all ATS platforms and cache in memory. Call once on server start."""
-    global _cached_ats_jobs
-    _cached_ats_jobs = scrape_all_ats()
-    print(f"[JOB CACHE] {len(_cached_ats_jobs)} jobs cached in memory")
 
 router = APIRouter(prefix="/api/jobs", tags=["job-match"])
 
@@ -52,10 +57,138 @@ def _validate_resume_quality(titles, skills, companies):
     has_title = len(titles) >= 1
     has_skills = len(skills) >= 3
     has_some = len(titles) >= 1 and len(skills) >= 1
-
     if has_title or has_skills or has_some or len(skills) >= 1:
         return True, ""
-    return False, "Could not find enough job-relevant information in this resume. Make sure it includes job titles, skills, or company names."
+    return False, "Could not find enough job-relevant information in this resume."
+
+
+# ─── Embedding ────────────────────────────────────────────────────────────────
+
+def _get_openai_client():
+    settings = get_settings()
+    return OpenAI(api_key=settings.openai_api_key)
+
+
+def _embed_text(text: str) -> list[float]:
+    """Embed text using OpenAI text-embedding-3-small. 1 API call."""
+    client = _get_openai_client()
+    response = client.embeddings.create(input=text, model="text-embedding-3-small")
+    return response.data[0].embedding
+
+
+# ─── OneProfile pgvector Search ───────────────────────────────────────────────
+
+def _search_oneprofile_jobs(embedding: list[float], threshold=0.3, limit=500) -> list[dict]:
+    """Search OneProfile's 25,000+ jobs using pgvector cosine similarity."""
+    client = get_oneprofile_supabase()
+    result = client.rpc("match_jobs", {
+        "query_embedding": embedding,
+        "match_threshold": threshold,
+        "match_count": limit,
+    }).execute()
+    return result.data or []
+
+
+def _extract_matched_skills(resume_skills: list[str], description: str) -> list[str]:
+    """Find which resume skills appear in the job description."""
+    if not description:
+        return []
+    desc_lower = description.lower()
+    matched = []
+    for skill in resume_skills:
+        if skill.lower() in desc_lower:
+            matched.append(skill)
+    return sorted(matched)
+
+
+def _generate_why(matched_skills: list[str]) -> str:
+    top = sorted(matched_skills)[:4]
+    if len(top) >= 2:
+        return f"Your {', '.join(top[:-1])} and {top[-1]} experience aligns with this role."
+    elif len(top) == 1:
+        return f"Your {top[0]} experience aligns with this role."
+    return "Role matches your experience profile."
+
+
+def _match_oneprofile_jobs(
+    resume_text: str,
+    resume_skills: list[str],
+    experience_level: str = "mid",
+) -> tuple[list[dict], int]:
+    """Embed resume text, search pgvector, apply hard filters, return scored results."""
+    embedding = _embed_text(resume_text)
+    raw_results = _search_oneprofile_jobs(embedding, threshold=0.3, limit=500)
+    total_searched = len(raw_results)
+
+    results = []
+    for job in raw_results:
+        title = (job.get("title") or "").strip()
+        company = (job.get("company") or "").strip()
+        description = job.get("description") or ""
+
+        # Quality gate
+        if not title or len(title) < 5 or title.lower().startswith("position at"):
+            continue
+        if not company or len(company) < 2:
+            continue
+
+        # Hard filters
+        if _detect_deal_breakers(title, description):
+            continue
+        title_lower = title.lower()
+        if any(loc in title_lower for loc in FOREIGN_IN_TITLE):
+            continue
+        if not _passes_location_filter(job):
+            continue
+        if not _passes_title_filter(title):
+            continue
+        seniority = _detect_seniority(title, description)
+        if not _passes_experience_filter(seniority, experience_level):
+            continue
+
+        similarity = job.get("similarity", 0)
+        matched_skills = _extract_matched_skills(resume_skills, description)
+
+        # Location formatting
+        location = job.get("location") or ""
+        if isinstance(location, list):
+            location = ", ".join(str(l) for l in location)
+        loc_lower = location.lower() if location else ""
+        if job.get("remote") or "remote" in loc_lower:
+            location_type = "remote"
+        elif "hybrid" in loc_lower:
+            location_type = "hybrid"
+        else:
+            location_type = "onsite"
+
+        company_domain = job.get("company_domain") or ""
+        if not company_domain and company:
+            company_domain = company.lower().replace(" ", "") + ".com"
+
+        results.append({
+            "title": title,
+            "company": company,
+            "company_logo": None,
+            "company_domain": company_domain,
+            "location": location or "Not specified",
+            "location_type": location_type,
+            "employment_type": job.get("employment_type") or "full_time",
+            "salary_min": job.get("salary_min"),
+            "salary_max": job.get("salary_max"),
+            "salary_currency": job.get("salary_currency") or "USD",
+            "description_snippet": (description or "")[:200],
+            "apply_link": job.get("apply_url") or "",
+            "posted_at": job.get("posted_at"),
+            "source": job.get("source") or "",
+            "is_stamp_verified": False,
+            "score": round(similarity * 100),
+            "matched_skills": matched_skills[:8],
+            "why_matched": _generate_why(matched_skills),
+            "seniority": seniority,
+        })
+
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results, total_searched
 
 
 # ─── Match Endpoint ───────────────────────────────────────────────────────────
@@ -67,10 +200,8 @@ async def match_jobs_from_resume(
 ):
     """Upload a resume and get matching jobs.
 
-    Parses the resume, validates quality, matches against Greenhouse jobs
-    and Stamp's own database. Returns scored results.
-
-    Public endpoint — no auth required. Rate limited by IP.
+    Parses the resume, embeds full text, searches 25,000+ jobs via pgvector,
+    applies hard filters, returns scored results.
     """
     client_ip = request.client.host if request.client else "unknown"
 
@@ -104,19 +235,18 @@ async def match_jobs_from_resume(
     # Match against Stamp's own database
     stamp_jobs = _match_stamp_jobs(resume)
 
-    # Match against cached ATS jobs
-    from app.services.greenhouse_matcher import match_greenhouse_jobs_from_list
-    greenhouse_results = match_greenhouse_jobs_from_list(
-        jobs=_cached_ats_jobs,
-        candidate_skills=resume.skills,
-        experience_level=_infer_level(resume),
-        threshold=1,
+    # Match against OneProfile's 25,000+ jobs via pgvector
+    experience_level = _infer_level(resume)
+    greenhouse_results, total_searched = _match_oneprofile_jobs(
+        resume_text=text,
+        resume_skills=resume.skills,
+        experience_level=experience_level,
     )
 
-    # Limit to top 200 to keep response fast
+    # Limit to top 200
     greenhouse_results = greenhouse_results[:200]
 
-    response = {
+    return {
         "resume_summary": {
             "titles": resume.titles,
             "skills": resume.skills[:15],
@@ -126,12 +256,10 @@ async def match_jobs_from_resume(
         },
         "stamp_jobs_count": len(stamp_jobs),
         "greenhouse_jobs_count": len(greenhouse_results),
-        "total_greenhouse_scanned": _get_total_ats_count(),
+        "total_greenhouse_scanned": total_searched,
         "jobs": stamp_jobs,
         "greenhouse_jobs": greenhouse_results,
     }
-
-    return response
 
 
 @router.post("/match-with-skills")
@@ -154,12 +282,12 @@ async def match_jobs_with_skills(
     if not skills:
         raise HTTPException(status_code=400, detail="No skills provided")
 
-    from app.services.greenhouse_matcher import match_greenhouse_jobs_from_list
-    greenhouse_results = match_greenhouse_jobs_from_list(
-        jobs=_cached_ats_jobs,
-        candidate_skills=skills,
+    # Build a text representation from skills for embedding
+    skills_text = "Software engineer with skills: " + ", ".join(skills) + f". Experience level: {level}."
+    greenhouse_results, _ = _match_oneprofile_jobs(
+        resume_text=skills_text,
+        resume_skills=skills,
         experience_level=level,
-        threshold=1,
     )
 
     return {
@@ -171,7 +299,6 @@ async def match_jobs_with_skills(
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _infer_level(resume) -> str:
-    """Infer experience level from resume."""
     text_lower = " ".join(resume.titles).lower() + " " + (resume.raw_text or "")[:500].lower()
     for kw in ["senior", "sr.", "lead", "principal", "staff"]:
         if kw in text_lower:
@@ -180,11 +307,6 @@ def _infer_level(resume) -> str:
         if kw in text_lower:
             return "junior"
     return "mid"
-
-
-def _get_total_ats_count() -> int:
-    """Get total number of cached ATS jobs."""
-    return len(_cached_ats_jobs)
 
 
 def _match_stamp_jobs(resume) -> list[dict]:

@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     invite_hmac_secret: str = ""
     cron_secret: str = ""
     jsearch_api_key: str = ""
+    oneprofile_supabase_url: str = ""
+    oneprofile_supabase_key: str = ""
+    openai_api_key: str = ""
 
     class Config:
         env_file = ".env"
@@ -24,6 +27,7 @@ def get_settings() -> Settings:
 
 
 _supabase_client: Client | None = None
+_oneprofile_client: Client | None = None
 
 
 def get_supabase() -> Client:
@@ -32,3 +36,12 @@ def get_supabase() -> Client:
         settings = get_settings()
         _supabase_client = create_client(settings.supabase_url, settings.supabase_service_key)
     return _supabase_client
+
+
+def get_oneprofile_supabase() -> Client:
+    """Get Supabase client for OneProfile job database (25,000+ jobs with pgvector)."""
+    global _oneprofile_client
+    if _oneprofile_client is None:
+        settings = get_settings()
+        _oneprofile_client = create_client(settings.oneprofile_supabase_url, settings.oneprofile_supabase_key)
+    return _oneprofile_client
