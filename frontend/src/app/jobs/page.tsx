@@ -85,7 +85,6 @@ export default function JobMatchPage() {
     setError("");
     setStampJobs([]);
     setGreenhouseJobs([]);
-    setSummary(null);
 
     try {
       const result = await api.matchJobsFromResume(token, file);
