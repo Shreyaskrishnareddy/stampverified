@@ -62,10 +62,6 @@ function formatSalary(min: number, max: number, currency: string) {
   return `${sym}${fmt(min)}-${fmt(max)}`;
 }
 
-function formatType(t: string) {
-  return t.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-}
-
 export default function JobMatchPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -79,17 +75,18 @@ export default function JobMatchPage() {
   const [summary, setSummary] = useState<ResumeSummary | null>(null);
   const [totalScanned, setTotalScanned] = useState(0);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
-  // Skill selection
+  // Skill + level editing
   const [activeSkills, setActiveSkills] = useState<Set<string>>(new Set());
   const [newSkill, setNewSkill] = useState("");
-
-  // Level selection
   const [selectedLevel, setSelectedLevel] = useState("mid");
 
-  // Filter
-  const [filter, setFilter] = useState<"best" | "all" | "remote">("best");
+  // Tabs + filters
+  const [tab, setTab] = useState<"matches" | "saved" | "viewed">("matches");
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [companySearch, setCompanySearch] = useState("");
+  const [savedJobs, setSavedJobs] = useState<Set<number>>(new Set());
+  const [viewedJobs, setViewedJobs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -111,20 +108,12 @@ export default function JobMatchPage() {
       setStampJobs(result.jobs || []);
       setGreenhouseJobs(result.greenhouse_jobs || []);
       setTotalScanned(result.total_greenhouse_scanned || 0);
-
-      // Initialize skills
       const skills = result.resume_summary?.skills || [];
       setActiveSkills(new Set(skills));
-
-      // Infer level
       const titles = (result.resume_summary?.titles || []).join(" ").toLowerCase();
-      if (titles.includes("senior") || titles.includes("lead") || titles.includes("staff")) {
-        setSelectedLevel("senior");
-      } else if (titles.includes("junior") || titles.includes("intern") || titles.includes("entry")) {
-        setSelectedLevel("junior");
-      } else {
-        setSelectedLevel("mid");
-      }
+      if (titles.includes("senior") || titles.includes("lead") || titles.includes("staff")) setSelectedLevel("senior");
+      else if (titles.includes("junior") || titles.includes("intern") || titles.includes("entry")) setSelectedLevel("junior");
+      else setSelectedLevel("mid");
     } catch (err: unknown) {
       setError((err as Error).message);
     }
@@ -134,10 +123,7 @@ export default function JobMatchPage() {
   const handleRematch = async () => {
     setRematchLoading(true);
     try {
-      const result = await api.matchJobsWithSkills(
-        Array.from(activeSkills),
-        selectedLevel,
-      );
+      const result = await api.matchJobsWithSkills(Array.from(activeSkills), selectedLevel);
       setGreenhouseJobs(result.greenhouse_jobs || []);
     } catch (err: unknown) {
       setError((err as Error).message);
@@ -156,20 +142,33 @@ export default function JobMatchPage() {
 
   const addSkill = () => {
     const s = newSkill.trim().toLowerCase();
-    if (s) {
-      setActiveSkills(prev => new Set(prev).add(s));
-      setNewSkill("");
-    }
+    if (s) { setActiveSkills(prev => new Set(prev).add(s)); setNewSkill(""); }
   };
 
-  const filteredGreenhouse = greenhouseJobs.filter(j => {
-    if (filter === "best") return j.score >= 60;
-    if (filter === "remote") return j.location_type === "remote" && j.score >= 60;
+  const toggleSaved = (idx: number) => {
+    setSavedJobs(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const markViewed = (idx: number) => {
+    setViewedJobs(prev => new Set(prev).add(idx));
+  };
+
+  // Filter jobs based on tab + filters
+  const filteredJobs = greenhouseJobs.filter((j, i) => {
+    if (tab === "saved" && !savedJobs.has(i)) return false;
+    if (tab === "viewed" && !viewedJobs.has(i)) return false;
+    if (tab === "matches" && viewedJobs.has(i)) return false;
+    if (remoteOnly && j.location_type !== "remote") return false;
+    if (companySearch && !j.company.toLowerCase().includes(companySearch.toLowerCase())) return false;
     return true;
   });
 
-  const bestCount = greenhouseJobs.filter(j => j.score >= 60).length;
-  const remoteCount = greenhouseJobs.filter(j => j.location_type === "remote" && j.score >= 60).length;
+  const matchCount = greenhouseJobs.filter((_, i) => !viewedJobs.has(i)).length;
 
   if (checkingAuth) {
     return (
@@ -189,12 +188,6 @@ export default function JobMatchPage() {
       <Navbar />
 
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Find Jobs That Match You</h1>
-          <p className="text-sm text-gray-500 mt-1">Upload your resume. See matching jobs from top companies.</p>
-        </div>
-
         {/* Upload area */}
         {!hasResults && !loading && (
           <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center hover:border-blue-300 hover:bg-blue-50/20 transition-all">
@@ -204,17 +197,9 @@ export default function JobMatchPage() {
               </svg>
             </div>
             <label className="cursor-pointer">
-              <span className="text-lg font-semibold text-gray-900">Upload your resume</span>
-              <p className="text-sm text-gray-400 mt-1">PDF only, max 5MB</p>
-              <input
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUpload(file);
-                }}
-              />
+              <span className="text-lg font-semibold text-gray-900">Drop your resume here</span>
+              <p className="text-sm text-gray-400 mt-1">PDF — we never store your file</p>
+              <input type="file" accept="application/pdf" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleUpload(file); }} />
               <div className="mt-6 inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors cursor-pointer">
                 Upload Resume
               </div>
@@ -224,21 +209,15 @@ export default function JobMatchPage() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-6 border border-red-100">
-            {error}
-          </div>
+          <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-6 border border-red-100">{error}</div>
         )}
 
         {/* Loading */}
         {loading && (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <div className="w-10 h-10 mx-auto border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4" />
-            <p className="text-gray-600 font-medium">Matching your resume...</p>
-            <p className="text-sm text-gray-400 mt-1">Scanning 7,600+ jobs from 48 top companies</p>
-            <div className="mt-4 text-xs text-gray-300 space-y-1">
-              <p>Airbnb, Stripe, OpenAI, Databricks, Discord, Vercel, MongoDB...</p>
-              <p>This takes about 10-15 seconds</p>
-            </div>
+            <p className="text-gray-600 font-medium">Searching 25,000+ jobs...</p>
+            <p className="text-sm text-gray-400 mt-1">Matching against 350+ companies</p>
           </div>
         )}
 
@@ -256,7 +235,6 @@ export default function JobMatchPage() {
                   </label>
                 </div>
 
-                {/* Titles */}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {summary.titles.filter(t => t.length < 40).slice(0, 3).map((t, i) => (
                     <span key={i} className="text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">{t}</span>
@@ -266,238 +244,192 @@ export default function JobMatchPage() {
                   )}
                 </div>
 
-                {/* Skills — toggleable */}
                 <div className="mb-3">
-                  <p className="text-xs text-gray-400 mb-2">Click to toggle skills. Add skills the parser missed.</p>
+                  <p className="text-xs text-gray-400 mb-2">Click to toggle skills</p>
                   <div className="flex flex-wrap gap-1.5">
                     {summary.skills.map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => toggleSkill(s)}
-                        className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-all ${
-                          activeSkills.has(s)
-                            ? "text-gray-700 bg-gray-100 hover:bg-gray-200"
-                            : "text-gray-300 bg-white border border-gray-200 line-through"
-                        }`}
-                      >
-                        {s}
-                      </button>
+                      <button key={i} onClick={() => toggleSkill(s)} className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-all ${activeSkills.has(s) ? "text-gray-700 bg-gray-100 hover:bg-gray-200" : "text-gray-300 bg-white border border-gray-200 line-through"}`}>{s}</button>
                     ))}
-                    {/* Show added skills not in original list */}
                     {Array.from(activeSkills).filter(s => !summary.skills.includes(s)).map((s, i) => (
-                      <button
-                        key={`added-${i}`}
-                        onClick={() => toggleSkill(s)}
-                        className="text-xs font-medium px-2.5 py-1 rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-all"
-                      >
-                        {s}
-                      </button>
+                      <button key={`added-${i}`} onClick={() => toggleSkill(s)} className="text-xs font-medium px-2.5 py-1 rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-all">{s}</button>
                     ))}
                   </div>
                   <div className="flex gap-2 mt-2">
-                    <input
-                      type="text"
-                      value={newSkill}
-                      onChange={e => setNewSkill(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter") addSkill(); }}
-                      placeholder="Add skill..."
-                      className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 w-36"
-                    />
+                    <input type="text" value={newSkill} onChange={e => setNewSkill(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addSkill(); }} placeholder="Add skill..." className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 w-36" />
                     <button onClick={addSkill} className="text-xs font-medium px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800">+</button>
                   </div>
                 </div>
 
-                {/* Level selection */}
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xs text-gray-400">Level:</span>
                   {(["junior", "mid", "senior"] as const).map(level => (
-                    <button
-                      key={level}
-                      onClick={() => setSelectedLevel(level)}
-                      className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                        selectedLevel === level
-                          ? "bg-gray-900 text-white"
-                          : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
+                    <button key={level} onClick={() => setSelectedLevel(level)} className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${selectedLevel === level ? "bg-gray-900 text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"}`}>
                       {level === "junior" ? "Early career" : level === "mid" ? "Mid" : "Senior"}
                     </button>
                   ))}
                 </div>
 
-                {/* Rematch button */}
-                <button
-                  onClick={handleRematch}
-                  disabled={rematchLoading}
-                  className="text-xs font-semibold px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
+                <button onClick={handleRematch} disabled={rematchLoading} className="text-xs font-semibold px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50">
                   {rematchLoading ? "Matching..." : "Update matches"}
                 </button>
               </div>
             )}
 
-            {/* Stats */}
-            <div className="text-xs text-gray-400 mb-4">
-              {bestCount} matched · {remoteCount} remote
-            </div>
-
-            {/* Section 1: Stamp Verified Jobs */}
-            <div className="mb-8">
-              <div className="flex items-center gap-2 mb-3">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#C8A235"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>
-                <h3 className="text-sm font-bold text-gray-900">Jobs on Stamp</h3>
-              </div>
-              {stampJobs.length > 0 ? (
-                <>
-                  <p className="text-xs text-gray-400 mb-4">Verified employers. Apply with your verified profile.</p>
-                  <div className="space-y-3">
-                    {stampJobs.map((job, i) => (
-                      <div key={`stamp-${i}`} className="bg-white rounded-2xl border border-amber-200/60 hover:border-amber-300 hover:shadow-md p-5 transition-all">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {job.company_domain ? (
-                              <img src={`https://www.google.com/s2/favicons?sz=128&domain=${job.company_domain}`} alt="" className="w-full h-full object-contain" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                            ) : (
-                              <span className="text-sm font-bold text-gray-400">{job.company?.[0]}</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-gray-900 truncate">{job.title}</h3>
-                              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="#C8A235"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>
-                            </div>
-                            <p className="text-sm text-gray-500 mt-0.5">{job.company}</p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {job.location} · {job.location_type === "remote" ? "Remote" : job.location_type === "hybrid" ? "Hybrid" : "Onsite"}
-                              {job.salary_min && job.salary_max ? ` · ${formatSalary(job.salary_min, job.salary_max, job.salary_currency || "USD")}` : ""}
-                            </p>
-                          </div>
-                          <Link href={`/jobs/${job.id}`} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-[#0A0A0A] hover:bg-gray-800 rounded-xl transition-colors flex-shrink-0">
-                            Apply
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-amber-200/60 bg-amber-50/30 p-6 text-center">
-                  <p className="text-sm font-medium text-gray-700">Verified jobs coming soon</p>
-                  <p className="text-xs text-gray-400 mt-1.5 max-w-md mx-auto">When verified companies post on Stamp, their jobs appear here first.</p>
-                  <Link href="/for-employers" className="inline-block mt-4 text-xs font-semibold text-amber-700 hover:text-amber-800 transition-colors">
-                    Are you hiring? Post on Stamp &rarr;
-                  </Link>
+            {/* Stamp Verified Jobs */}
+            {stampJobs.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#C8A235"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>
+                  <h3 className="text-sm font-bold text-gray-900">Jobs on Stamp</h3>
                 </div>
-              )}
+                <div className="space-y-3">
+                  {stampJobs.map((job, i) => (
+                    <div key={`stamp-${i}`} className="bg-white rounded-2xl border border-amber-200/60 hover:border-amber-300 hover:shadow-md p-5 transition-all">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {job.company_domain ? (
+                            <img src={`https://www.google.com/s2/favicons?sz=128&domain=${job.company_domain}`} alt="" className="w-full h-full object-contain" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                          ) : (
+                            <span className="text-sm font-bold text-gray-400">{job.company?.[0]}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900 truncate">{job.title}</h3>
+                            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="#C8A235"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-0.5">{job.company}</p>
+                          <p className="text-xs text-gray-400 mt-1">{job.location}</p>
+                        </div>
+                        <Link href={`/jobs/${job.id}`} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex-shrink-0">Apply</Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tabs */}
+            <div className="flex gap-1 mb-4 border-b border-gray-200">
+              {([
+                { key: "matches" as const, label: `Matches (${matchCount})` },
+                { key: "saved" as const, label: `Saved (${savedJobs.size})` },
+                { key: "viewed" as const, label: `Viewed (${viewedJobs.size})` },
+              ]).map(t => (
+                <button key={t.key} onClick={() => setTab(t.key)} className={`text-xs font-medium px-4 py-2.5 border-b-2 -mb-px transition-all ${tab === t.key ? "text-gray-900 border-gray-900 font-semibold" : "text-gray-400 border-transparent hover:text-gray-600"}`}>
+                  {t.label}
+                </button>
+              ))}
             </div>
 
-            {/* Section 2: Greenhouse Jobs */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">Matching Jobs from Top Companies</h3>
-              </div>
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <button onClick={() => setRemoteOnly(!remoteOnly)} className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${remoteOnly ? "bg-gray-900 text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"}`}>
+                Remote only
+              </button>
+              <select value={selectedLevel} onChange={e => setSelectedLevel(e.target.value)} className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-500 appearance-none pr-6" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center" }}>
+                <option value="">All levels</option>
+                <option value="junior">Early career</option>
+                <option value="mid">Mid-level</option>
+                <option value="senior">Senior+</option>
+              </select>
+            </div>
 
-              {/* Filters */}
-              <div className="flex gap-2 mb-4">
-                {(["best", "all", "remote"] as const).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                      filter === f
-                        ? "bg-gray-900 text-white"
-                        : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    {f === "best" ? `Best matches (${bestCount})` : f === "all" ? "All jobs" : `Remote (${remoteCount})`}
-                  </button>
-                ))}
-              </div>
+            {/* Company search */}
+            <input type="text" value={companySearch} onChange={e => setCompanySearch(e.target.value)} placeholder="Filter by company..." className="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 mb-4 placeholder:text-gray-300" />
 
-              {filteredGreenhouse.length > 0 ? (
-                <div className="space-y-3">
-                  {filteredGreenhouse.map((job, i) => {
-                    const cardKey = `gh-${i}`;
-                    const isExpanded = expandedCard === cardKey;
-                    const scoreClass = job.score >= 80 ? "bg-green-50 text-green-700" : job.score >= 60 ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500";
+            {/* Job cards — flat, OneProfile style */}
+            {filteredJobs.length > 0 ? (
+              <div className="space-y-3">
+                {filteredJobs.map((job, idx) => {
+                  const realIdx = greenhouseJobs.indexOf(job);
+                  const scoreClass = job.score >= 70 ? "bg-green-50 text-green-700" : job.score >= 50 ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500";
+                  const isSaved = savedJobs.has(realIdx);
 
-                    return (
-                      <div
-                        key={cardKey}
-                        onClick={() => setExpandedCard(isExpanded ? null : cardKey)}
-                        className="bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-sm p-5 transition-all cursor-pointer"
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {job.company_domain ? (
-                              <img src={`https://www.google.com/s2/favicons?sz=128&domain=${job.company_domain}`} alt="" className="w-full h-full object-contain" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                            ) : (
-                              <span className="text-sm font-bold text-gray-400">{job.company?.[0]}</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900 truncate">{job.title}</h3>
-                            <p className="text-sm text-gray-500 mt-0.5">
-                              {job.company}
-                              {job.location_type === "remote" && <span className="ml-2 text-xs font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Remote</span>}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {job.location}
-                              {job.salary_min && job.salary_max ? ` · ${formatSalary(job.salary_min, job.salary_max, job.salary_currency || "USD")}` : ""}
-                            </p>
-                          </div>
-                          <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold ${scoreClass}`}>
-                            {job.score}%
-                          </div>
+                  return (
+                    <div key={`gh-${realIdx}`} className="bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-sm p-5 transition-all relative">
+                      {/* Bookmark — top right */}
+                      <button onClick={() => toggleSaved(realIdx)} className={`absolute top-4 right-14 w-8 h-8 flex items-center justify-center rounded-lg transition-all ${isSaved ? "text-blue-600" : "text-gray-300 hover:text-blue-500 hover:bg-blue-50"}`}>
+                        <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isSaved ? 0 : 2}>
+                          <path d="M5 2h14a1 1 0 011 1v19.143a.5.5 0 01-.766.424L12 18.03l-7.234 4.536A.5.5 0 014 22.143V3a1 1 0 011-1z"/>
+                        </svg>
+                      </button>
+
+                      {/* Score — top right */}
+                      <div className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${scoreClass}`}>
+                        {job.score}
+                      </div>
+
+                      <div className="flex items-start gap-4 pr-24">
+                        {/* Logo */}
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {job.company_domain ? (
+                            <img src={`https://www.google.com/s2/favicons?sz=128&domain=${job.company_domain}`} alt="" className="w-full h-full object-contain" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                          ) : (
+                            <span className="text-sm font-bold text-gray-400">{job.company?.[0]}</span>
+                          )}
                         </div>
 
-                        {/* Expanded details */}
-                        {isExpanded && (
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <p className="text-sm text-gray-600 mb-3">{job.why_matched}</p>
-                            {job.matched_skills.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 mb-3">
-                                {job.matched_skills.map((s, si) => (
-                                  <span key={si} className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">{s}</span>
-                                ))}
-                              </div>
-                            )}
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 text-[15px] leading-snug">{job.title}</h3>
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            {job.company}
+                            {job.location_type === "remote" && <span className="ml-2 text-[11px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Remote</span>}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {job.location}
+                            {job.salary_min && job.salary_max ? ` · ${formatSalary(job.salary_min, job.salary_max, job.salary_currency || "USD")}` : ""}
+                          </p>
+
+                          {/* Why matched */}
+                          {job.why_matched && (
+                            <p className="text-[13px] text-gray-500 mt-2 leading-relaxed">{job.why_matched}</p>
+                          )}
+
+                          {/* Matched skills */}
+                          {job.matched_skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {job.matched_skills.map((s, si) => (
+                                <span key={si} className="text-[11px] font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">{s}</span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Apply button */}
+                          <div className="flex justify-end mt-3">
                             {job.apply_link && (
                               <a
                                 href={job.apply_link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={e => e.stopPropagation()}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
+                                onClick={() => markViewed(realIdx)}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
                               >
-                                View job
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                                Apply
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
                               </a>
                             )}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-8 text-center">
-                  <p className="text-sm font-medium text-gray-700 mb-1">No matching jobs found</p>
-                  <p className="text-xs text-gray-400">Try adjusting your skills or experience level above.</p>
-                </div>
-              )}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-8 text-center">
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  {tab === "matches" ? "No matches found." : tab === "saved" ? "No saved jobs yet." : "No viewed jobs yet."}
+                </p>
+              </div>
+            )}
 
             {/* CTA */}
             <div className="mt-8 bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-100 p-8 text-center">
               <h3 className="text-lg font-bold text-gray-900 mb-2">Stand out when you apply</h3>
-              <p className="text-sm text-gray-500 mb-6">
-                Get your experience verified by past employers. Verified candidates get seen first.
-              </p>
-              <Link
-                href={token ? "/dashboard?from=match" : "/?auth=signup&next=/dashboard?from=match"}
-                className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
-              >
+              <p className="text-sm text-gray-500 mb-6">Get your experience verified by past employers. Verified candidates get seen first.</p>
+              <Link href={token ? "/dashboard?from=match" : "/?auth=signup&next=/dashboard?from=match"} className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
                 Verify your experience
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
               </Link>
