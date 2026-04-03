@@ -89,33 +89,91 @@ def _search_oneprofile_jobs(embedding: list[float], threshold=0.3, limit=500) ->
     return result.data or []
 
 
-def _extract_matched_skills(resume_skills: list[str], description: str) -> list[str]:
-    """Find which resume skills appear in the job description."""
-    if not description:
-        return []
-    desc_lower = description.lower()
-    matched = []
-    for skill in resume_skills:
-        if skill.lower() in desc_lower:
-            matched.append(skill)
-    return sorted(matched)
+SENIORITY_LEVELS = ["junior", "mid", "senior"]
+
+TITLE_KW_HIGH = [
+    "software development engineer", "sde", "software engineer",
+    "software developer", "ai engineer", "ml engineer", "machine learning engineer",
+    "backend engineer", "backend developer", "fullstack engineer", "full stack engineer",
+    "python engineer", "applied scientist", "research engineer", "nlp engineer",
+]
+
+TITLE_KW_MEDIUM = [
+    "platform engineer", "data engineer", "frontend engineer", "developer",
+    "devops engineer", "cloud engineer", "site reliability", "infrastructure engineer",
+    "systems engineer", "security engineer",
+]
 
 
-def _generate_why(matched_skills: list[str]) -> str:
-    top = sorted(matched_skills)[:4]
-    if len(top) >= 2:
-        return f"Your {', '.join(top[:-1])} and {top[-1]} experience aligns with this role."
-    elif len(top) == 1:
-        return f"Your {top[0]} experience aligns with this role."
-    return "Role matches your experience profile."
+def _match_skills_synonym(resume_skills: list[str], job_skills: list[str]) -> tuple[list, list, float]:
+    """Synonym-aware skill matching. Returns (matched, missing, ratio)."""
+    resume_norm = {normalize_skill(s) for s in resume_skills}
+    job_norm = {normalize_skill(s) for s in job_skills} if job_skills else set()
+    if not job_norm:
+        return [], [], 0.2
+    matched = sorted(resume_norm & job_norm)
+    missing = sorted(job_norm - resume_norm)
+    if len(job_norm) <= 2:
+        ratio = min(len(matched) * 0.2, 0.4)
+    elif len(job_norm) <= 4 and len(matched) <= 2:
+        ratio = min(len(matched) * 0.15, 0.4)
+    else:
+        ratio = len(matched) / len(job_norm)
+        if len(matched) >= 5:
+            ratio = min(ratio + 0.1, 1.0)
+    return matched, missing[:5], min(ratio, 1.0)
+
+
+def _title_relevance(title: str, target_roles: list[str]) -> float:
+    tl = title.lower()
+    for role in target_roles:
+        if role.lower() in tl or tl in role.lower():
+            return 1.0
+    for kw in TITLE_KW_HIGH:
+        if kw in tl:
+            return 0.8
+    for kw in TITLE_KW_MEDIUM:
+        if kw in tl:
+            return 0.5
+    return 0.2
+
+
+def _seniority_fit(job_level: str, candidate_level: str) -> float:
+    if job_level not in SENIORITY_LEVELS or candidate_level not in SENIORITY_LEVELS:
+        return 0.5
+    diff = abs(SENIORITY_LEVELS.index(job_level) - SENIORITY_LEVELS.index(candidate_level))
+    return {0: 1.0, 1: 0.5}.get(diff, 0.0)
+
+
+def _composite_score(similarity, skill_ratio, title_score, seniority_score):
+    return round((0.35 * similarity + 0.30 * skill_ratio + 0.15 * title_score + 0.10 * seniority_score + 0.10 * 0.5) * 100)
+
+
+def _generate_why(matched: list, missing: list, title_score: float, sen_score: float) -> str:
+    parts = []
+    if matched:
+        top = matched[:4]
+        if len(top) >= 2:
+            parts.append(f"Your {', '.join(top[:-1])} and {top[-1]} experience aligns with this role.")
+        else:
+            parts.append(f"Your {top[0]} experience aligns with this role.")
+    if title_score >= 0.8:
+        parts.append("Strong title match.")
+    if sen_score >= 1.0:
+        parts.append("Experience level is a direct fit.")
+    return " ".join(parts) if parts else "Role matches your experience profile."
 
 
 def _match_oneprofile_jobs(
     resume_text: str,
     resume_skills: list[str],
     experience_level: str = "mid",
+    target_roles: list[str] = None,
 ) -> tuple[list[dict], int]:
-    """Embed resume text, search pgvector, apply hard filters, return scored results."""
+    """Embed resume text, search pgvector, re-rank with composite score."""
+    if target_roles is None:
+        target_roles = ["Software Engineer"]
+
     embedding = _embed_text(resume_text)
     raw_results = _search_oneprofile_jobs(embedding, threshold=0.3, limit=500)
     total_searched = len(raw_results)
@@ -126,30 +184,24 @@ def _match_oneprofile_jobs(
         company = (job.get("company") or "").strip()
         description = job.get("description") or ""
 
-        # Quality gate
-        if not title or len(title) < 5 or title.lower().startswith("position at"):
+        if not title or len(title) < 5 or not company or len(company) < 2:
             continue
-        if not company or len(company) < 2:
-            continue
-
-        # Hard filters
         if _detect_deal_breakers(title, description):
             continue
-        title_lower = title.lower()
-        if any(loc in title_lower for loc in FOREIGN_IN_TITLE):
-            continue
-        if not _passes_location_filter(job):
-            continue
-        if not _passes_title_filter(title):
-            continue
-        seniority = _detect_seniority(title, description)
-        if not _passes_experience_filter(seniority, experience_level):
+
+        job_level = job.get("experience_level") or "mid"
+        sen_score = _seniority_fit(job_level, experience_level)
+        if sen_score == 0.0:
             continue
 
+        # Synonym-aware skill matching using pre-extracted job skills
+        job_skills = job.get("skills") or []
+        matched, missing, skill_ratio = _match_skills_synonym(resume_skills, job_skills)
+
+        title_score = _title_relevance(title, target_roles)
         similarity = job.get("similarity", 0)
-        matched_skills = _extract_matched_skills(resume_skills, description)
+        score = _composite_score(similarity, skill_ratio, title_score, sen_score)
 
-        # Location formatting
         location = job.get("location") or ""
         if isinstance(location, list):
             location = ", ".join(str(l) for l in location)
@@ -181,10 +233,10 @@ def _match_oneprofile_jobs(
             "posted_at": job.get("posted_at"),
             "source": job.get("source") or "",
             "is_stamp_verified": False,
-            "score": round(similarity * 100),
-            "matched_skills": matched_skills[:8],
-            "why_matched": _generate_why(matched_skills),
-            "seniority": seniority,
+            "score": score,
+            "matched_skills": matched[:8],
+            "why_matched": _generate_why(matched, missing, title_score, sen_score),
+            "seniority": job_level,
         })
 
     results.sort(key=lambda x: x["score"], reverse=True)
@@ -241,6 +293,7 @@ async def match_jobs_from_resume(
         resume_text=text,
         resume_skills=resume.skills,
         experience_level=experience_level,
+        target_roles=resume.titles,
     )
 
     # Limit to top 200
