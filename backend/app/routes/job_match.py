@@ -150,18 +150,21 @@ def _composite_score(similarity, skill_ratio, title_score, seniority_score):
 
 
 def _generate_why(matched: list, missing: list, title_score: float, sen_score: float) -> str:
-    parts = []
+    skill_part = ""
     if matched:
-        top = matched[:4]
+        top = matched[:3]
         if len(top) >= 2:
-            parts.append(f"Your {', '.join(top[:-1])} and {top[-1]} experience aligns with this role.")
+            skill_part = f"{', '.join(top[:-1])} and {top[-1]} match"
         else:
-            parts.append(f"Your {top[0]} experience aligns with this role.")
+            skill_part = f"{top[0]} matches"
+    tags = []
+    if skill_part:
+        tags.append(skill_part)
     if title_score >= 0.8:
-        parts.append("Strong title match.")
+        tags.append("title fit")
     if sen_score >= 1.0:
-        parts.append("Experience level is a direct fit.")
-    return " ".join(parts) if parts else "Role matches your experience profile."
+        tags.append("level fit")
+    return " · ".join(tags) if tags else "Matches your experience profile"
 
 
 def _match_oneprofile_jobs(
