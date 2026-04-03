@@ -321,26 +321,22 @@ export default function JobMatchPage() {
                             {job.salary_min && job.salary_max ? ` · ${formatSalary(job.salary_min, job.salary_max, job.salary_currency || "USD")}` : ""}
                           </p>
 
-                          {/* Why matched */}
-                          {job.why_matched && (
-                            <p className="text-[13px] text-gray-500 leading-relaxed mt-2">{job.why_matched}</p>
-                          )}
-
-                          {/* Apply — far right */}
-                          {job.apply_link && (
-                            <div className="text-right mt-2">
+                          {/* Why matched + Apply — same row */}
+                          <div className="flex items-center justify-between gap-3 mt-1.5">
+                            <p className="text-[13px] text-gray-500 leading-snug">{job.why_matched || ""}</p>
+                            {job.apply_link && (
                               <a
                                 href={job.apply_link}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => markViewed(realIdx)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex-shrink-0"
                               >
                                 Apply
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
                               </a>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
