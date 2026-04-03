@@ -289,12 +289,15 @@ export default function JobMatchPage() {
 
                   return (
                     <div key={`gh-${realIdx}`} className="bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-sm p-5 transition-all relative">
-                      {/* Bookmark — top right */}
-                      <button onClick={() => toggleSaved(realIdx)} className={`absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg transition-all ${isSaved ? "text-blue-600" : "text-gray-300 hover:text-blue-500 hover:bg-blue-50"}`}>
-                        <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isSaved ? 0 : 2}>
-                          <path d="M5 2h14a1 1 0 011 1v19.143a.5.5 0 01-.766.424L12 18.03l-7.234 4.536A.5.5 0 014 22.143V3a1 1 0 011-1z"/>
-                        </svg>
-                      </button>
+                      {/* Score + Bookmark — top right */}
+                      <div className="absolute top-4 right-4 flex items-center gap-1.5">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${scoreClass}`}>{job.score}</div>
+                        <button onClick={() => toggleSaved(realIdx)} className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${isSaved ? "text-blue-600" : "text-gray-300 hover:text-blue-500 hover:bg-blue-50"}`}>
+                          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isSaved ? 0 : 2}>
+                            <path d="M5 2h14a1 1 0 011 1v19.143a.5.5 0 01-.766.424L12 18.03l-7.234 4.536A.5.5 0 014 22.143V3a1 1 0 011-1z"/>
+                          </svg>
+                        </button>
+                      </div>
 
                       <div className="flex items-start gap-4 pr-12">
                         {/* Logo */}
@@ -310,7 +313,6 @@ export default function JobMatchPage() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-gray-900 text-[15px] leading-snug">{job.title}</h3>
                           <p className="text-sm text-gray-500 mt-0.5">
-                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[11px] font-bold mr-1.5 align-middle ${scoreClass}`}>{job.score}</span>
                             {job.company}
                             {job.location_type === "remote" && <span className="ml-2 text-[11px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Remote</span>}
                           </p>
