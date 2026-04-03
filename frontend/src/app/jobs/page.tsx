@@ -48,14 +48,6 @@ type StampJob = {
   why_matched: string;
 };
 
-type ResumeSummary = {
-  titles: string[];
-  skills: string[];
-  location: string | null;
-  experience_years: number | null;
-  companies: string[];
-};
-
 function formatSalary(min: number, max: number, currency: string) {
   const sym = currency === "USD" ? "$" : currency + " ";
   const fmt = (n: number) => n >= 1000 ? `${Math.round(n / 1000)}K` : String(n);
@@ -68,18 +60,11 @@ export default function JobMatchPage() {
 
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [rematchLoading, setRematchLoading] = useState(false);
   const [error, setError] = useState("");
   const [stampJobs, setStampJobs] = useState<StampJob[]>([]);
   const [greenhouseJobs, setGreenhouseJobs] = useState<GreenhouseJob[]>([]);
-  const [summary, setSummary] = useState<ResumeSummary | null>(null);
   const [totalScanned, setTotalScanned] = useState(0);
   const [checkingAuth, setCheckingAuth] = useState(true);
-
-  // Skill + level editing
-  const [activeSkills, setActiveSkills] = useState<Set<string>>(new Set());
-  const [newSkill, setNewSkill] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState("mid");
 
   // Tabs + filters
   const [tab, setTab] = useState<"matches" | "saved" | "viewed">("matches");
@@ -104,45 +89,13 @@ export default function JobMatchPage() {
 
     try {
       const result = await api.matchJobsFromResume(token, file);
-      setSummary(result.resume_summary || null);
       setStampJobs(result.jobs || []);
       setGreenhouseJobs(result.greenhouse_jobs || []);
       setTotalScanned(result.total_greenhouse_scanned || 0);
-      const skills = result.resume_summary?.skills || [];
-      setActiveSkills(new Set(skills));
-      const titles = (result.resume_summary?.titles || []).join(" ").toLowerCase();
-      if (titles.includes("senior") || titles.includes("lead") || titles.includes("staff")) setSelectedLevel("senior");
-      else if (titles.includes("junior") || titles.includes("intern") || titles.includes("entry")) setSelectedLevel("junior");
-      else setSelectedLevel("mid");
     } catch (err: unknown) {
       setError((err as Error).message);
     }
     setLoading(false);
-  };
-
-  const handleRematch = async () => {
-    setRematchLoading(true);
-    try {
-      const result = await api.matchJobsWithSkills(Array.from(activeSkills), selectedLevel);
-      setGreenhouseJobs(result.greenhouse_jobs || []);
-    } catch (err: unknown) {
-      setError((err as Error).message);
-    }
-    setRematchLoading(false);
-  };
-
-  const toggleSkill = (skill: string) => {
-    setActiveSkills(prev => {
-      const next = new Set(prev);
-      if (next.has(skill)) next.delete(skill);
-      else next.add(skill);
-      return next;
-    });
-  };
-
-  const addSkill = () => {
-    const s = newSkill.trim().toLowerCase();
-    if (s) { setActiveSkills(prev => new Set(prev).add(s)); setNewSkill(""); }
   };
 
   const toggleSaved = (idx: number) => {
@@ -224,56 +177,13 @@ export default function JobMatchPage() {
         {/* Results */}
         {hasResults && (
           <>
-            {/* Resume summary + skill editing */}
-            {summary && (
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Your Profile</h3>
-                  <label className="text-xs text-gray-400 cursor-pointer hover:text-blue-600 transition-colors">
-                    Upload different
-                    <input type="file" accept="application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
-                  </label>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {summary.titles.filter(t => t.length < 40).slice(0, 3).map((t, i) => (
-                    <span key={i} className="text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">{t}</span>
-                  ))}
-                  {summary.location && (
-                    <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">{summary.location}</span>
-                  )}
-                </div>
-
-                <div className="mb-3">
-                  <p className="text-xs text-gray-400 mb-2">Click to toggle skills</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {summary.skills.map((s, i) => (
-                      <button key={i} onClick={() => toggleSkill(s)} className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-all ${activeSkills.has(s) ? "text-gray-700 bg-gray-100 hover:bg-gray-200" : "text-gray-300 bg-white border border-gray-200 line-through"}`}>{s}</button>
-                    ))}
-                    {Array.from(activeSkills).filter(s => !summary.skills.includes(s)).map((s, i) => (
-                      <button key={`added-${i}`} onClick={() => toggleSkill(s)} className="text-xs font-medium px-2.5 py-1 rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-all">{s}</button>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <input type="text" value={newSkill} onChange={e => setNewSkill(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addSkill(); }} placeholder="Add skill..." className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 w-36" />
-                    <button onClick={addSkill} className="text-xs font-medium px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800">+</button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs text-gray-400">Level:</span>
-                  {(["junior", "mid", "senior"] as const).map(level => (
-                    <button key={level} onClick={() => setSelectedLevel(level)} className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${selectedLevel === level ? "bg-gray-900 text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"}`}>
-                      {level === "junior" ? "Early career" : level === "mid" ? "Mid" : "Senior"}
-                    </button>
-                  ))}
-                </div>
-
-                <button onClick={handleRematch} disabled={rematchLoading} className="text-xs font-semibold px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50">
-                  {rematchLoading ? "Matching..." : "Update matches"}
-                </button>
-              </div>
-            )}
+            {/* Upload different — small link */}
+            <div className="flex justify-end mb-4">
+              <label className="text-xs text-gray-400 cursor-pointer hover:text-blue-600 transition-colors">
+                New resume
+                <input type="file" accept="application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+              </label>
+            </div>
 
             {/* Stamp Verified Jobs */}
             {stampJobs.length > 0 && (
@@ -327,12 +237,6 @@ export default function JobMatchPage() {
               <button onClick={() => setRemoteOnly(!remoteOnly)} className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${remoteOnly ? "bg-gray-900 text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"}`}>
                 Remote only
               </button>
-              <select value={selectedLevel} onChange={e => setSelectedLevel(e.target.value)} className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-500 appearance-none pr-6" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center" }}>
-                <option value="">All levels</option>
-                <option value="junior">Early career</option>
-                <option value="mid">Mid-level</option>
-                <option value="senior">Senior+</option>
-              </select>
             </div>
 
             {/* Company search */}
