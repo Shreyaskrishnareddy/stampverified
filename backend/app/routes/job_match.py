@@ -72,7 +72,7 @@ def _get_openai_client():
 def _embed_text(text: str) -> list[float]:
     """Embed text using OpenAI text-embedding-3-small. 1 API call."""
     client = _get_openai_client()
-    response = client.embeddings.create(input=text, model="text-embedding-3-small")
+    response = client.embeddings.create(input=text, model="text-embedding-3-small", dimensions=256)
     return response.data[0].embedding
 
 
