@@ -643,9 +643,9 @@ stampverified/
 │           ├── job_functions.py     # Auto-detection from titles
 │           ├── jd_extract.py        # JD text extraction (regex)
 │           ├── url_import.py        # ATS URL import (JSON-LD)
-│           ├── job_search.py        # JSearch API (legacy, replaced by Greenhouse)
-│           ├── greenhouse_scraper.py # Greenhouse API scraper (50 companies, 5,700+ jobs)
-│           ├── greenhouse_matcher.py # Matching engine (hard filters + scoring)
+│           ├── job_search.py        # JSearch API (legacy)
+│           ├── greenhouse_scraper.py # ATS scraper (legacy, replaced by OneProfile DB)
+│           ├── greenhouse_matcher.py # Hard filters + skill synonyms (used by job_match.py)
 │           ├── resume_parser.py     # Resume PDF parsing
 │           └── talent_search.py     # Candidate search engine
 │
@@ -778,54 +778,82 @@ python -m pytest tests/ -v
 
 ## Job Matching System
 
-Stamp matches candidates against 5,700+ real jobs from 29 top tech companies via the Greenhouse public API.
+Stamp matches candidates against **25,000+ real jobs from 350+ companies** using semantic search (OpenAI embeddings + pgvector) with composite re-ranking.
 
-**How it works:**
+**Architecture:**
 
 ```
 Candidate uploads resume (PDF)
     |
     v
-Resume parser extracts: titles, skills, location, companies
+Resume parser extracts: titles, skills, location, experience level
     |
     v
-Two-phase matching:
+Full resume text embedded (OpenAI text-embedding-3-small, 256 dimensions)
     |
-    +-- Stamp verified jobs (from database) -- shown first with gold badge
+    v
+pgvector cosine similarity search against OneProfile job database
+    (pre-filtered in SQL: US jobs only, tech roles only)
     |
-    +-- Greenhouse jobs (5,700+ from 29 companies) -- scored and ranked
-        |
-        Hard filters (pass/fail):
-            - Location: US only or remote open to US
-            - Title: engineering roles only
-            - Seniority: within 1 level of candidate
-            - Deal-breakers: clearance, visa restrictions
-        |
-        Scoring: 60% skill match + 40% keyword depth
-        |
-        Results with: match %, "why you matched" sentence, skill tags
+    v
+Query-time hard filters:
+    - Deal-breakers: clearance, visa restrictions
+    - Seniority: within 1 level of candidate
+    |
+    v
+Composite re-ranking (not just cosine similarity):
+    35% semantic similarity (pgvector cosine)
+    30% skill overlap ratio (synonym-aware, from pre-extracted job skills)
+    15% title relevance (job title vs candidate's target roles)
+    10% seniority fit (exact match = 1.0, adjacent = 0.5)
+    10% reserved (years of experience fit)
+    |
+    v
+Results with: composite score, matched skills, missing skills,
+    title fit, seniority fit, "why you matched" explanation
 ```
 
-**Companies included:**
-Airbnb, Stripe, Figma, Discord, Cloudflare, Databricks, Datadog, Twitch, Coinbase, Robinhood, Instacart, Pinterest, Reddit, Brex, Airtable, Vercel, GitLab, Elastic, MongoDB, Cockroach Labs, PlanetScale, LaunchDarkly, Postman, Twilio, Algolia, Grafana Labs, ClickHouse, dbt Labs, Fivetran
+**Data sources (scraped and stored in OneProfile Supabase with pgvector):**
 
-**Refresh job data:**
-```bash
-cd backend
-python -m app.services.greenhouse_scraper
-```
+| Source | Companies | Jobs |
+|---|---|---|
+| Greenhouse API | 200+ | ~12,000 |
+| SmartRecruiters API | 27 | ~6,500 |
+| Ashby API | 70+ | ~2,300 |
+| SimplifyJobs (GitHub) | curated | ~1,800 |
+| Amazon Jobs API | 1 | ~900 |
+| Workday CXS API | 11 | ~580 |
+| Lever API | 35+ | ~410 |
+| HackerNews Who's Hiring | monthly | ~240 |
+| Apple Jobs (SSR) | 1 | ~70 |
+
+**Job metadata (extracted during ingestion, stored per row):**
+- `skills TEXT[]` — extracted tech skills (synonym-normalized)
+- `experience_level` — junior / mid / senior (detected from title)
+- `is_us BOOLEAN` — US job flag (pre-filtered in SQL)
+- `is_tech_role BOOLEAN` — engineering role flag (pre-filtered in SQL)
+- `cleaned_text` — boilerplate-stripped description used for embedding
+
+**Two result tiers:**
+1. Stamp verified jobs (from Stamp database) — shown first with gold badge
+2. OneProfile jobs (25,000+ from 350+ companies) — composite scored and ranked
 
 **Features:**
-- Match scores (0-100%) with color-coded circles
-- Toggleable skill tags — click to enable/disable skills, add missing ones
+- Composite match scores with color-coded circles
+- Synonym-aware skill matching (90+ skill synonyms)
+- Matched skills + missing skills shown per job
 - Experience level selector (Early career / Mid / Senior)
 - Filters: Best matches / All jobs / Remote only
-- Click to expand: "Why you matched" + description snippet + matched skill tags
 - Company logos via Google favicon API
 - Salary display when available
-- "Update matches" button after editing skills or level
 - Stamp verified jobs appear first with gold badge
-- No external API dependencies (Greenhouse public API, no key needed)
+
+**Environment variables required:**
+```
+ONEPROFILE_SUPABASE_URL=...    # OneProfile job database
+ONEPROFILE_SUPABASE_KEY=...    # Service role key
+OPENAI_API_KEY=...             # For resume embedding
+```
 
 ---
 
