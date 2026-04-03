@@ -69,7 +69,10 @@ export default function JobMatchPage() {
   // Tabs + filters
   const [tab, setTab] = useState<"matches" | "saved" | "viewed">("matches");
   const [remoteOnly, setRemoteOnly] = useState(false);
+  const [levelFilter, setLevelFilter] = useState("");
   const [companySearch, setCompanySearch] = useState("");
+  const [showBoardFilter, setShowBoardFilter] = useState(false);
+  const [excludedSources, setExcludedSources] = useState<Set<string>>(new Set());
   const [savedJobs, setSavedJobs] = useState<Set<number>>(new Set());
   const [viewedJobs, setViewedJobs] = useState<Set<number>>(new Set());
 
@@ -110,13 +113,18 @@ export default function JobMatchPage() {
     setViewedJobs(prev => new Set(prev).add(idx));
   };
 
+  // All unique sources for board filter
+  const allSources = Array.from(new Set(greenhouseJobs.map(j => j.source || "").filter(Boolean))).sort();
+
   // Filter jobs based on tab + filters
   const filteredJobs = greenhouseJobs.filter((j, i) => {
     if (tab === "saved" && !savedJobs.has(i)) return false;
     if (tab === "viewed" && !viewedJobs.has(i)) return false;
     if (tab === "matches" && viewedJobs.has(i)) return false;
     if (remoteOnly && j.location_type !== "remote") return false;
+    if (levelFilter && j.seniority !== levelFilter) return false;
     if (companySearch && !j.company.toLowerCase().includes(companySearch.toLowerCase())) return false;
+    if (excludedSources.size > 0 && j.source && excludedSources.has(j.source)) return false;
     return true;
   });
 
@@ -236,7 +244,37 @@ export default function JobMatchPage() {
               <button onClick={() => setRemoteOnly(!remoteOnly)} className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${remoteOnly ? "bg-gray-900 text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"}`}>
                 Remote only
               </button>
+              <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-500 appearance-none pr-6" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center" }}>
+                <option value="">All levels</option>
+                <option value="junior">Early career</option>
+                <option value="mid">Mid-level</option>
+                <option value="senior">Senior+</option>
+              </select>
+              <button onClick={() => setShowBoardFilter(!showBoardFilter)} className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${showBoardFilter ? "bg-gray-900 text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"}`}>
+                More filters
+              </button>
             </div>
+
+            {/* Job board filter (hidden by default) */}
+            {showBoardFilter && (
+              <div className="bg-white border border-gray-200 rounded-xl p-3 mb-3">
+                <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide mb-2">Job board</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {allSources.map(src => (
+                    <label key={src} className="text-xs text-gray-600 cursor-pointer flex items-center gap-1">
+                      <input type="checkbox" checked={!excludedSources.has(src)} onChange={() => {
+                        setExcludedSources(prev => {
+                          const next = new Set(prev);
+                          if (next.has(src)) next.delete(src); else next.add(src);
+                          return next;
+                        });
+                      }} />
+                      {src}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Company search */}
             <input type="text" value={companySearch} onChange={e => setCompanySearch(e.target.value)} placeholder="Filter by company..." className="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 mb-4 placeholder:text-gray-300" />
@@ -252,18 +290,13 @@ export default function JobMatchPage() {
                   return (
                     <div key={`gh-${realIdx}`} className="bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-sm p-5 transition-all relative">
                       {/* Bookmark — top right */}
-                      <button onClick={() => toggleSaved(realIdx)} className={`absolute top-4 right-14 w-8 h-8 flex items-center justify-center rounded-lg transition-all ${isSaved ? "text-blue-600" : "text-gray-300 hover:text-blue-500 hover:bg-blue-50"}`}>
+                      <button onClick={() => toggleSaved(realIdx)} className={`absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg transition-all ${isSaved ? "text-blue-600" : "text-gray-300 hover:text-blue-500 hover:bg-blue-50"}`}>
                         <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isSaved ? 0 : 2}>
                           <path d="M5 2h14a1 1 0 011 1v19.143a.5.5 0 01-.766.424L12 18.03l-7.234 4.536A.5.5 0 014 22.143V3a1 1 0 011-1z"/>
                         </svg>
                       </button>
 
-                      {/* Score — top right */}
-                      <div className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${scoreClass}`}>
-                        {job.score}
-                      </div>
-
-                      <div className="flex items-start gap-4 pr-24">
+                      <div className="flex items-start gap-4 pr-12">
                         {/* Logo */}
                         <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {job.company_domain ? (
@@ -277,6 +310,7 @@ export default function JobMatchPage() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-gray-900 text-[15px] leading-snug">{job.title}</h3>
                           <p className="text-sm text-gray-500 mt-0.5">
+                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[11px] font-bold mr-1.5 align-middle ${scoreClass}`}>{job.score}</span>
                             {job.company}
                             {job.location_type === "remote" && <span className="ml-2 text-[11px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Remote</span>}
                           </p>
@@ -285,24 +319,26 @@ export default function JobMatchPage() {
                             {job.salary_min && job.salary_max ? ` · ${formatSalary(job.salary_min, job.salary_max, job.salary_currency || "USD")}` : ""}
                           </p>
 
-                          {/* Why matched + Apply */}
-                          <div className="flex items-start justify-between gap-4 mt-2">
-                            {job.why_matched ? (
-                              <p className="text-[13px] text-gray-500 leading-relaxed flex-1">{job.why_matched}</p>
-                            ) : <div className="flex-1" />}
-                            {job.apply_link && (
+                          {/* Why matched */}
+                          {job.why_matched && (
+                            <p className="text-[13px] text-gray-500 leading-relaxed mt-2">{job.why_matched}</p>
+                          )}
+
+                          {/* Apply — far right */}
+                          {job.apply_link && (
+                            <div className="text-right mt-2">
                               <a
                                 href={job.apply_link}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => markViewed(realIdx)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex-shrink-0 self-start"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
                               >
                                 Apply
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
                               </a>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
